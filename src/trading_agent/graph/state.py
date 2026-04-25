@@ -98,6 +98,30 @@ class DebateRound(BaseModel):
     seller_new: bool
 
 
+class CausalChain(BaseModel):
+    """归因分析因果链"""
+    chain: List[dict]  # [{step: "A", description: "热点板块炒作", evidence: "TrendRadar热度"}]
+    final_conclusion: str  # 最终结论
+    confidence: float  # 因果链置信度
+
+
+class CounterfactualScenario(BaseModel):
+    """反事实推断场景"""
+    scenario: str  # 场景描述：如"下跌10%"
+    impact: str  # 影响：如"持仓市值减少 X 元"
+    probability: float  # 发生概率估计
+    expected_behavior: str  # 预期行为
+    recommendation: str  # 建议
+
+
+class CounterfactualAnalysis(BaseModel):
+    """反事实推断结果"""
+    scenarios: List[CounterfactualScenario]
+    worst_case: str  # 最坏情况
+    mitigation: str  # 风险缓解措施
+    exit_strategy: str  # 退出策略
+
+
 class Decision(BaseModel):
     """Final decision"""
     stock_code: str
@@ -107,6 +131,8 @@ class Decision(BaseModel):
     reasoning: str
     should_enter: bool
     risk_level: str  # high/medium/low
+    causal_chain: Optional[CausalChain] = None  # 归因分析
+    counterfactual: Optional[CounterfactualAnalysis] = None  # 反事实推断
 
 
 class PositionAdvice(BaseModel):
