@@ -58,6 +58,14 @@ def mock_state_with_candidates() -> WorkflowState:
     return state
 
 
+# ============== Test Config ==============
+
+TEST_CONFIG = {
+    "configurable": {
+        "thread_id": "test-thread-001"
+    }
+}
+
 # ============== Workflow Building Tests ==============
 
 
@@ -327,7 +335,7 @@ class TestFullWorkflowExecution:
         app = build_workflow()
 
         # Execute workflow
-        result = app.invoke(initial_state)
+        result = app.invoke(initial_state, config=TEST_CONFIG)
 
         # Verify workflow completed
         assert result is not None
@@ -338,7 +346,7 @@ class TestFullWorkflowExecution:
         """Test that workflow generates a decision"""
         app = build_workflow()
 
-        result = app.invoke(initial_state)
+        result = app.invoke(initial_state, config=TEST_CONFIG)
 
         # Should have a decision
         assert "decision" in result
@@ -349,7 +357,7 @@ class TestFullWorkflowExecution:
         """Test that workflow generates position advice"""
         app = build_workflow()
 
-        result = app.invoke(initial_state)
+        result = app.invoke(initial_state, config=TEST_CONFIG)
 
         # Should have position advice
         assert "position_advice" in result
@@ -360,7 +368,7 @@ class TestFullWorkflowExecution:
         """Test that workflow saves push result"""
         app = build_workflow()
 
-        result = app.invoke(initial_state)
+        result = app.invoke(initial_state, config=TEST_CONFIG)
 
         # Should have push result
         assert "push_result" in result
@@ -373,7 +381,7 @@ class TestFullWorkflowExecution:
 
         # Stream execution
         steps = []
-        for step in app.stream(initial_state):
+        for step in app.stream(initial_state, config=TEST_CONFIG):
             steps.append(step)
 
         # Should have multiple steps
@@ -395,7 +403,7 @@ class TestPreMarketWorkflow:
         state = create_initial_state(run_type=RunType.PRE_MARKET)
         app = build_pre_market_workflow()
 
-        result = app.invoke(state)
+        result = app.invoke(state, config=TEST_CONFIG)
 
         # Should complete screener
         assert result["screener_status"] == StepStatus.COMPLETED.value
@@ -407,7 +415,7 @@ class TestPreMarketWorkflow:
         app = build_pre_market_workflow()
 
         steps = []
-        for step in app.stream(state):
+        for step in app.stream(state, config=TEST_CONFIG):
             steps.append(step)
 
         # Pre-market should have only 2 steps (init + screener)
@@ -426,7 +434,7 @@ class TestWorkflowErrorHandling:
         mock_fetch.side_effect = Exception("Mock API error")
 
         app = build_workflow()
-        result = app.invoke(initial_state)
+        result = app.invoke(initial_state, config=TEST_CONFIG)
 
         # Workflow should still complete but screener failed
         # Note: workflow continues despite node errors
@@ -438,7 +446,7 @@ class TestWorkflowErrorHandling:
         initial_state["candidate_stocks"] = []
 
         app = build_workflow()
-        result = app.invoke(initial_state)
+        result = app.invoke(initial_state, config=TEST_CONFIG)
 
         # Should still complete
         assert result is not None

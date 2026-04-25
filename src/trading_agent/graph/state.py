@@ -3,10 +3,11 @@ Workflow state definitions V2
 Based on refined business requirements
 """
 
-from typing import TypedDict, List, Optional
+from typing import TypedDict, List, Optional, Annotated
 from datetime import datetime
 from enum import Enum
 from pydantic import BaseModel
+import operator
 
 
 # Enums
@@ -203,7 +204,7 @@ class WorkflowState(TypedDict):
     
     # Timing
     start_time: str
-    current_step_start: str
+    current_step_start: Optional[str]  # Remove from parallel nodes
     end_time: Optional[str]
 
     # Overall workflow status

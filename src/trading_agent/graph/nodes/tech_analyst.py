@@ -46,7 +46,6 @@ def tech_analyst_node(state: WorkflowState) -> Dict:
     # Update status to RUNNING
     updates: Dict[str, Any] = {
         "tech_analyst_status": StepStatus.RUNNING.value,
-        "current_step_start": datetime.now().isoformat(),
     }
 
     try:
