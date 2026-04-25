@@ -52,11 +52,11 @@
 | 3.1 | Screener 实现 | 生成候选池 | 测试输出候选股票 | ✅ DONE |
 | 3.2 | TechAnalyst 实现 | 技术面分析 | 测试输出分析结果 | ✅ DONE |
 | 3.3 | FundAnalyst 实现 | 基本面分析 | 测试输出分析结果 | ✅ DONE |
-| 3.4 | Aggregator 实现 | 汇总分析 | 测试输出摘要 | TODO |
-| 3.5 | Debater 实现 | 辩论机制 | 测试辩论流程 | TODO |
-| 3.6 | Judge 实现 | 决策机制 | 测试输出决策 | TODO |
-| 3.7 | PositionAdvisor 实现 | 持仓建议 | 测试输出建议 | TODO |
-| 3.8 | Push 实现 | 推送报告 | 测试推送成功 | TODO |
+ 3.4 | Aggregator 实现 | 汇总分析 | 测试输出摘要 | ✅ DONE |
+ 3.5 | Debater 实现 | 辩论机制 | 测试辩论流程 | ✅ DONE |
+ 3.6 | Judge 实现 | 决策机制 | 测试输出决策 | ✅ DONE |
+ 3.7 | PositionAdvisor 实现 | 持仓建议 | 测试输出建议 | ✅ DONE |
+ 3.8 | Push 实现 | 推送报告 | 测试推送成功 | ✅ DONE |
 
 ### Phase 4: 集成测试
 
