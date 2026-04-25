@@ -5,8 +5,9 @@ Loads config from YAML files and environment variables.
 """
 
 import os
+import re
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, List, Optional
 import yaml
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -14,6 +15,13 @@ from dotenv import load_dotenv
 
 # Load .env file
 load_dotenv()
+
+
+class FallbackLLMConfig(BaseModel):
+    """Fallback LLM configuration"""
+    provider: str
+    model: str
+    api_key: Optional[str] = None
 
 
 class LLMConfig(BaseModel):
@@ -24,33 +32,101 @@ class LLMConfig(BaseModel):
     base_url: Optional[str] = None
     temperature: float = 0.7
     max_tokens: int = 4000
+    fallbacks: List[FallbackLLMConfig] = []
 
 
 class DebateConfig(BaseModel):
     """Debate configuration"""
     max_rounds: int = 100
     convergence_threshold: float = 0.8
+    buyer_agent_prompt: str = "agents/prompts/debater_buy.txt"
+    seller_agent_prompt: str = "agents/prompts/debater_sell.txt"
+
+
+class PreMarketSchedule(BaseModel):
+    """Pre-market schedule configuration"""
+    time: str = "09:00"
+    days: List[str] = ["mon", "tue", "wed", "thu", "fri"]
+    enabled: bool = True
+
+
+class PostMarketSchedule(BaseModel):
+    """Post-market schedule configuration"""
+    time: str = "15:30"
+    days: List[str] = ["mon", "tue", "wed", "thu", "fri"]
+    enabled: bool = True
 
 
 class ScheduleConfig(BaseModel):
     """Schedule configuration"""
-    pre_market_time: str = "09:00"
-    post_market_time: str = "15:30"
+    pre_market: PreMarketSchedule = PreMarketSchedule()
+    post_market: PostMarketSchedule = PostMarketSchedule()
+
+
+class FeishuPushConfig(BaseModel):
+    """Feishu push configuration"""
+    webhook: Optional[str] = None
     enabled: bool = True
+
+
+class EmailPushConfig(BaseModel):
+    """Email push configuration"""
+    smtp_server: Optional[str] = None
+    smtp_user: Optional[str] = None
+    smtp_password: Optional[str] = None
+    to: Optional[str] = None
+    enabled: bool = False
 
 
 class PushConfig(BaseModel):
     """Push notification configuration"""
-    feishu_webhook: Optional[str] = None
-    feishu_enabled: bool = False
-    email_enabled: bool = False
+    feishu: FeishuPushConfig = FeishuPushConfig()
+    email: EmailPushConfig = EmailPushConfig()
+
+
+class TrendRadarConfig(BaseModel):
+    """TrendRadar MCP configuration"""
+    mcp_path: Optional[str] = None
+    enabled: bool = True
+
+
+class AkshareConfig(BaseModel):
+    """Akshare data source configuration"""
+    enabled: bool = True
+    proxy: str = ""
+
+
+class StockDBConfig(BaseModel):
+    """Stock database configuration"""
+    path: str = "data/stock_db/stocks.json"
+    update_interval: str = "weekly"
 
 
 class DataSourceConfig(BaseModel):
     """Data source configuration"""
-    akshare_enabled: bool = True
-    trendradar_mcp_path: Optional[str] = None
-    stock_db_path: str = "data/stock_db/stocks.json"
+    trendradar: TrendRadarConfig = TrendRadarConfig()
+    akshare: AkshareConfig = AkshareConfig()
+    stock_db: StockDBConfig = StockDBConfig()
+
+
+class PathsConfig(BaseModel):
+    """Paths configuration"""
+    data_dir: str = "data"
+    log_dir: str = "logs"
+    candidates_dir: str = "data/candidates"
+    decisions_dir: str = "data/decisions"
+
+
+class PortfolioConfig(BaseModel):
+    """Portfolio configuration"""
+    config_path: str = "config/portfolio.yaml"
+    keywords_path: str = "config/keywords.yaml"
+
+
+class RuntimeConfig(BaseModel):
+    """Runtime configuration"""
+    debug: bool = False
+    log_level: str = "INFO"
 
 
 class Settings(BaseModel):
@@ -60,13 +136,9 @@ class Settings(BaseModel):
     schedule: ScheduleConfig = ScheduleConfig()
     push: PushConfig = PushConfig()
     data_sources: DataSourceConfig = DataSourceConfig()
-
-    # Paths
-    data_dir: Path = Path("data")
-    log_dir: Path = Path("logs")
-
-    # Runtime
-    debug: bool = False
+    paths: PathsConfig = PathsConfig()
+    portfolio: PortfolioConfig = PortfolioConfig()
+    runtime: RuntimeConfig = RuntimeConfig()
 
 
 def load_config(config_path: Optional[Path] = None) -> Settings:
@@ -104,34 +176,40 @@ def load_config(config_path: Optional[Path] = None) -> Settings:
     return Settings()
 
 
-def _resolve_env_vars(config: dict) -> dict:
+def _resolve_env_vars(value: Any) -> Any:
     """
     Resolve environment variables in config values
 
-    Supports ${VAR_NAME} syntax
+    Supports ${VAR_NAME} syntax anywhere in strings
 
     Args:
-        config: Config dict with potential env var references
+        value: Config value with potential env var references
 
     Returns:
-        Config dict with resolved values
+        Config value with resolved environment variables
     """
-    result = {}
+    if isinstance(value, str):
+        # Match ${VAR_NAME} pattern
+        pattern = r"\$\{([^}]+)\}"
 
-    for key, value in config.items():
-        if isinstance(value, str) and value.startswith("${") and value.endswith("}"):
-            env_var = value[2:-1]
+        def replace_env_var(match: re.Match) -> str:
+            env_var = match.group(1)
             resolved = os.getenv(env_var)
-            if resolved:
-                result[key] = resolved
-            else:
-                result[key] = value  # Keep original if env var not found
-        elif isinstance(value, dict):
-            result[key] = _resolve_env_vars(value)
-        else:
-            result[key] = value
+            if resolved is not None:
+                return resolved
+            # Return original if env var not found
+            return match.group(0)
 
-    return result
+        return re.sub(pattern, replace_env_var, value)
+
+    elif isinstance(value, dict):
+        return {k: _resolve_env_vars(v) for k, v in value.items()}
+
+    elif isinstance(value, list):
+        return [_resolve_env_vars(item) for item in value]
+
+    else:
+        return value
 
 
 # Global settings instance
