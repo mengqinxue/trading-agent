@@ -29,6 +29,14 @@ from .akshare_data import (
     FinancialResponse,
 )
 
+from .aggregator import (
+    DataAggregator,
+    StockDataBundle,
+    MarketOverview,
+    get_stock_bundle,
+    get_market_summary,
+)
+
 __all__ = [
     # TrendRadar
     "get_hot_news",
@@ -51,4 +59,10 @@ __all__ = [
     "KlineResponse",
     "FinancialData",
     "FinancialResponse",
+    # Aggregator
+    "DataAggregator",
+    "StockDataBundle",
+    "MarketOverview",
+    "get_stock_bundle",
+    "get_market_summary",
 ]
