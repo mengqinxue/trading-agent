@@ -3,7 +3,8 @@ Screener node - 热点发现 & 粗筛
 
 Responsibilities:
 - Get hot news from TrendRadar MCP
-- Identify hot sectors
+- AI analyze hot sectors
+- Identify hype leaders (not fundamentals leaders)
 - Generate candidate stock pool
 - Save candidates to data/
 """
@@ -20,54 +21,59 @@ logger = get_logger("SCREENER")
 def screener_node(state: WorkflowState) -> Dict:
     """
     Screener node entry function
-
+    
     This node:
-    1. Updates state status to RUNNING
-    2. Logs entry
-    3. Placeholder for business logic (TODO)
-    4. Updates state status to COMPLETED
-    5. Logs exit and returns updated state
-
+    1. Updates status to RUNNING
+    2. Gets hot news from TrendRadar MCP
+    3. Identifies hot sectors
+    4. Generates candidate stock pool
+    5. Updates status to COMPLETED
+    6. Returns updated state
+    
     Args:
         state: Current workflow state
-
+    
     Returns:
         Dict with updated state fields
     """
-    # Log entry
     run_id = state.get("run_id", "unknown")
     logger.info(f"[{run_id}] Screener node started")
-    logger.info(f"[{run_id}] Step status: {state.get('screener_status')}")
-
+    logger.info(f"[{run_id}] Status: {state.get('screener_status')}")
+    
     # Update status to RUNNING
     updates = {
         "screener_status": StepStatus.RUNNING.value,
         "current_step_start": datetime.now().isoformat(),
     }
-
+    
     # TODO: Business logic placeholder
     # 1. Call TrendRadar MCP to get hot news
     logger.info(f"[{run_id}] TODO: Get hot news from TrendRadar MCP")
-
+    
     # 2. Analyze hot sectors
     logger.info(f"[{run_id}] TODO: Analyze hot sectors")
-
-    # 3. Generate candidate stock pool
-    logger.info(f"[{run_id}] TODO: Generate candidate stocks")
-
-    # 4. Save candidates to data/candidates/YYYY-MM-DD.json
+    
+    # 3. Identify hype leaders
+    logger.info(f"[{run_id}] TODO: Identify hype leaders")
+    
+    # 4. Filter by keywords
+    logger.info(f"[{run_id}] TODO: Filter by keywords")
+    
+    # 5. Generate candidate pool
+    logger.info(f"[{run_id}] TODO: Generate candidate pool")
+    
+    # 6. Save candidates to data/
     logger.info(f"[{run_id}] TODO: Save candidates to data/")
-
-    # Placeholder: create empty candidate list for now
+    
+    # Placeholder: empty lists for now
     updates["hot_news"] = []
     updates["hot_sectors"] = []
     updates["candidate_stocks"] = []
-
+    
     # Update status to COMPLETED
     updates["screener_status"] = StepStatus.COMPLETED.value
-
-    # Log exit
+    
     logger.info(f"[{run_id}] Screener node completed")
-    logger.info(f"[{run_id}] Candidates generated: {len(updates.get('candidate_stocks', []))}")
-
+    logger.info(f"[{run_id}] Candidates: {len(updates.get('candidate_stocks', []))}")
+    
     return updates

@@ -1,5 +1,6 @@
 """
-Workflow state definitions
+Workflow state definitions V2
+Based on refined business requirements
 """
 
 from typing import TypedDict, List, Optional
@@ -27,9 +28,18 @@ class StepStatus(str, Enum):
     FAILED = "failed"
 
 
+class PositionAction(str, Enum):
+    NEW_BUY = "new_buy"
+    ADD = "add"
+    REDUCE = "reduce"
+    CLEAR = "clear"
+    HOLD = "hold"
+    SKIP = "skip"
+
+
 # Models
 class Stock(BaseModel):
-    """股票信息"""
+    """Stock information"""
     code: str
     name: str
     market: str
@@ -37,132 +47,181 @@ class Stock(BaseModel):
 
 
 class Sector(BaseModel):
-    """热点板块"""
+    """Hot sector"""
     name: str
     heat_score: float
     leaders: List[str]
     news_count: int
 
 
-class AnalysisResult(BaseModel):
-    """分析结果"""
-    stock: Stock
+class TechAnalysisResult(BaseModel):
+    """Technical analysis result"""
+    stock_code: str
+    stock_name: str
+    trend_direction: str  # up/down/neutral
+    signals: List[str]
+    recommendation: Recommendation
+    confidence: float  # 0-1
+    arguments: List[str]
+
+
+class FundAnalysisResult(BaseModel):
+    """Fundamental analysis result"""
+    stock_code: str
+    stock_name: str
+    fundamentals_score: float  # 0-100
+    risks: List[str]
+    positives: List[str]
     recommendation: Recommendation
     confidence: float
     arguments: List[str]
-    signals: List[str]
+
+
+class AnalysisSummary(BaseModel):
+    """Aggregated analysis summary"""
+    stock_code: str
+    stock_name: str
+    tech_score: float  # 0-100
+    fund_score: float  # 0-100
+    combined_score: float
+    buy_arguments: List[str]
+    sell_arguments: List[str]
 
 
 class DebateRound(BaseModel):
-    """辩论回合"""
+    """Debate round record"""
+    stock_code: str
     round: int
     buyer_argument: str
     seller_argument: str
-
-
-class DebateResult(BaseModel):
-    """辩论结果"""
-    stock: Stock
-    rounds: List[DebateRound]
-    consensus_reached: bool
-    buyer_final: str
-    seller_final: str
-    summary: str
+    buyer_new: bool  # Whether buyer introduced new argument
+    seller_new: bool
 
 
 class Decision(BaseModel):
-    """最终决策"""
-    stock: Stock
-    recommendation: Recommendation
+    """Final decision"""
+    stock_code: str
+    stock_name: str
+    action: Recommendation
     confidence: float
-    position_advice: str
     reasoning: str
-    risks: List[str]
+    should_enter: bool
+    risk_level: str  # high/medium/low
+
+
+class PositionAdvice(BaseModel):
+    """Position advice"""
+    stock_code: str
+    position_action: PositionAction
+    suggested_amount: float  # Position size percentage
+    stop_loss: Optional[float]
+    take_profit: Optional[float]
+    current_position: Optional[dict]
 
 
 # Workflow State (TypedDict for LangGraph)
 class WorkflowState(TypedDict):
     """
-    LangGraph workflow state
-
+    LangGraph workflow state V2
+    
     This state flows through all nodes in the workflow.
     Each node reads from and writes to this state.
     """
-    # Run metadata
+    # Init
     run_id: str
-    run_type: str
-    status: str
-
-    # Step status tracking
+    run_type: str  # pre_market / post_market
+    system_status: dict
+    portfolio: dict
+    
+    # Step 1: Init
+    init_status: str
+    
+    # Step 2: Screener
     screener_status: str
-    data_analyst_status: str
-    due_diligence_status: str
-    debater_status: str
-    judge_status: str
-    push_status: str
-
-    # Portfolio context
-    portfolio_positions: List[dict]
-    portfolio_keywords: List[str]
-
-    # Step 1: Screener outputs
-    hot_news: List[dict]
     hot_sectors: List[Sector]
     candidate_stocks: List[Stock]
-
-    # Step 2a: Data Analyst outputs
-    data_analysis_results: List[AnalysisResult]
-
-    # Step 2b: Due Diligence outputs
-    due_diligence_results: List[AnalysisResult]
-
-    # Step 3: Debater outputs
-    debate_results: List[DebateResult]
-
-    # Step 4: Judge outputs
-    decisions: List[Decision]
-
+    
+    # Step 3: Analysis (parallel)
+    tech_analyst_status: str
+    fund_analyst_status: str
+    tech_results: List[TechAnalysisResult]
+    fund_results: List[FundAnalysisResult]
+    
+    # Step 4: Aggregator
+    aggregator_status: str
+    analysis_summary: List[AnalysisSummary]
+    
+    # Step 5: Debater
+    debater_status: str
+    debate_log: List[DebateRound]
+    buyer_score: float
+    seller_score: float
+    consensus: bool
+    
+    # Step 6: Judge
+    judge_status: str
+    decision: Decision
+    
+    # Step 7: Position Advisor
+    position_status: str
+    position_advice: PositionAdvice
+    
+    # Step 8: Push
+    push_status: str
+    push_result: dict
+    
     # Error handling
     error_step: Optional[str]
     error_message: Optional[str]
-
+    
     # Timing
     start_time: str
     current_step_start: str
     end_time: Optional[str]
 
 
-def create_initial_state(run_type: RunType, portfolio: dict = None) -> WorkflowState:
+def create_initial_state(run_type: RunType = RunType.POST_MARKET, portfolio: dict = None) -> WorkflowState:
     """Create initial workflow state"""
     now = datetime.now().isoformat()
-
+    
     return WorkflowState(
         run_id=datetime.now().strftime("%Y%m%d-%H%M%S"),
         run_type=run_type.value,
-        status=StepStatus.PENDING.value,
-
+        system_status={},
+        portfolio=portfolio.get("portfolio", {}) if portfolio else {},
+        
+        init_status=StepStatus.PENDING.value,
+        
         screener_status=StepStatus.PENDING.value,
-        data_analyst_status=StepStatus.PENDING.value,
-        due_diligence_status=StepStatus.PENDING.value,
-        debater_status=StepStatus.PENDING.value,
-        judge_status=StepStatus.PENDING.value,
-        push_status=StepStatus.PENDING.value,
-
-        portfolio_positions=portfolio.get("positions", []) if portfolio else [],
-        portfolio_keywords=portfolio.get("keywords", []) if portfolio else [],
-
-        hot_news=[],
         hot_sectors=[],
         candidate_stocks=[],
-
-        data_analysis_results=[],
-        due_diligence_results=[],
-        debate_results=[],
-        decisions=[],
-
+        
+        tech_analyst_status=StepStatus.PENDING.value,
+        fund_analyst_status=StepStatus.PENDING.value,
+        tech_results=[],
+        fund_results=[],
+        
+        aggregator_status=StepStatus.PENDING.value,
+        analysis_summary=[],
+        
+        debater_status=StepStatus.PENDING.value,
+        debate_log=[],
+        buyer_score=0.0,
+        seller_score=0.0,
+        consensus=False,
+        
+        judge_status=StepStatus.PENDING.value,
+        decision={},
+        
+        position_status=StepStatus.PENDING.value,
+        position_advice={},
+        
+        push_status=StepStatus.PENDING.value,
+        push_result={},
+        
         error_step=None,
         error_message=None,
-
+        
         start_time=now,
         current_step_start=now,
         end_time=None,

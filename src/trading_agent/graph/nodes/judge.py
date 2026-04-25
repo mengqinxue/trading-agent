@@ -2,10 +2,11 @@
 Judge node - 评委决策
 
 Responsibilities:
-- Combine all analysis results
+- Combine analysis results + debate results
 - Consider portfolio positions
-- Generate final decision with position advice
-- Save decision report
+- Evaluate risk/reward ratio
+- Generate final decision
+- Determine if should enter market
 """
 
 from datetime import datetime
@@ -20,63 +21,71 @@ logger = get_logger("JUDGE")
 def judge_node(state: WorkflowState) -> Dict:
     """
     Judge node entry function
-
-    This node makes final decisions based on all previous analysis.
-
+    
+    This node makes final decision based on all previous analysis.
+    
     Args:
         state: Current workflow state
-
+    
     Returns:
         Dict with updated state fields
     """
     run_id = state.get("run_id", "unknown")
     logger.info(f"[{run_id}] Judge node started")
-    logger.info(f"[{run_id}] Step status: {state.get('judge_status')}")
-
+    logger.info(f"[{run_id}] Status: {state.get('judge_status')}")
+    
     # Update status to RUNNING
     updates = {
         "judge_status": StepStatus.RUNNING.value,
         "current_step_start": datetime.now().isoformat(),
     }
-
+    
     # Load all previous results
-    data_analysis = state.get("data_analysis_results", [])
-    due_diligence = state.get("due_diligence_results", [])
-    debates = state.get("debate_results", [])
-    candidates = state.get("candidate_stocks", [])
-    portfolio_positions = state.get("portfolio_positions", [])
-
-    logger.info(f"[{run_id}] Technical analysis: {len(data_analysis)} results")
-    logger.info(f"[{run_id}] Due diligence: {len(due_diligence)} results")
-    logger.info(f"[{run_id}] Debates: {len(debates)} results")
-    logger.info(f"[{run_id}] Current positions: {len(portfolio_positions)}")
-
-    # TODO: Business logic placeholder
-    # 1. Combine all analysis for each candidate
-    logger.info(f"[{run_id}] TODO: Combine all analysis results")
-
-    # 2. Consider portfolio positions (already holding? position ratio?)
-    logger.info(f"[{run_id}] TODO: Consider portfolio positions")
-
-    # 3. Evaluate risk/reward ratio
+    analysis_summary = state.get("analysis_summary", [])
+    debate_log = state.get("debate_log", [])
+    buyer_score = state.get("buyer_score", 0.0)
+    seller_score = state.get("seller_score", 0.0)
+    portfolio = state.get("portfolio", {})
+    
+    logger.info(f"[{run_id}] Analysis: {len(analysis_summary)} entries")
+    logger.info(f"[{run_id}] Debate rounds: {len(debate_log)}")
+    logger.info(f"[{run_id}] Buyer score: {buyer_score}, Seller score: {seller_score}")
+    logger.info(f"[{run_id}] Portfolio: {len(portfolio.get('positions', []))} positions")
+    
+    # TODO: Judge logic
+    # 1. Combine all analysis results
+    logger.info(f"[{run_id}] TODO: Combine analysis results")
+    
+    # 2. Consider debate scores
+    logger.info(f"[{run_id}] TODO: Consider debate scores")
+    
+    # 3. Check portfolio position
+    logger.info(f"[{run_id}] TODO: Check portfolio position")
+    
+    # 4. Evaluate risk/reward
     logger.info(f"[{run_id}] TODO: Evaluate risk/reward")
-
-    # 4. Generate final decision (buy/sell/hold)
+    
+    # 5. Generate final decision
     logger.info(f"[{run_id}] TODO: Generate final decision")
-
-    # 5. Generate position advice
-    logger.info(f"[{run_id}] TODO: Generate position advice")
-
-    # 6. Save decision report to data/decisions/
-    logger.info(f"[{run_id}] TODO: Save decision report")
-
-    # Placeholder: empty decisions
-    updates["decisions"] = []
-
+    
+    # 6. Determine if should enter
+    logger.info(f"[{run_id}] TODO: Determine if should enter market")
+    
+    # Placeholder: empty decision for now
+    decision = {
+        "stock_code": "",
+        "action": "hold",
+        "confidence": 0.0,
+        "reasoning": "TODO",
+        "should_enter": False,
+        "risk_level": "medium",
+    }
+    updates["decision"] = decision
+    
     # Update status to COMPLETED
     updates["judge_status"] = StepStatus.COMPLETED.value
-
+    
     logger.info(f"[{run_id}] Judge node completed")
-    logger.info(f"[{run_id}] Decisions: {len(updates.get('decisions', []))}")
-
+    logger.info(f"[{run_id}] Decision: {decision.get('action')}")
+    
     return updates
