@@ -164,6 +164,7 @@ class WorkflowState(TypedDict):
     
     # Step 2: Screener
     screener_status: str
+    hot_news: List[dict]  # Raw hot news from TrendRadar
     hot_sectors: List[Sector]
     candidate_stocks: List[Stock]
     
@@ -205,6 +206,9 @@ class WorkflowState(TypedDict):
     current_step_start: str
     end_time: Optional[str]
 
+    # Overall workflow status
+    status: Optional[str]  # Overall workflow status (completed/failed)
+
 
 def create_initial_state(run_type: RunType = RunType.POST_MARKET, portfolio: dict = None) -> WorkflowState:
     """Create initial workflow state"""
@@ -219,6 +223,7 @@ def create_initial_state(run_type: RunType = RunType.POST_MARKET, portfolio: dic
         init_status=StepStatus.PENDING.value,
         
         screener_status=StepStatus.PENDING.value,
+        hot_news=[],
         hot_sectors=[],
         candidate_stocks=[],
         
@@ -247,8 +252,9 @@ def create_initial_state(run_type: RunType = RunType.POST_MARKET, portfolio: dic
         
         error_step=None,
         error_message=None,
-        
+
         start_time=now,
         current_step_start=now,
         end_time=None,
+        status=None,
     )
