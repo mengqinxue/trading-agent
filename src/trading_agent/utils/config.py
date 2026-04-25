@@ -218,6 +218,7 @@ _settings: Optional[Settings] = None
 
 def get_settings() -> Settings:
     """Get global settings instance"""
+    global _settings
     if _settings is None:
         _settings = load_config()
     return _settings
