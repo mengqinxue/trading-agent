@@ -1,0 +1,29 @@
+# Portfolio Configuration
+# Your stock positions and watchlist
+
+# ==================== Positions ====================
+positions:
+  # A股持仓示例
+  # - symbol: "000001"
+  #   name: "平安银行"
+  #   shares: 1000
+  #   avg_cost: 12.50
+
+  # 美股持仓示例
+  # - symbol: "AAPL"
+  #   name: "Apple Inc."
+  #   shares: 100
+  #   avg_cost: 175.00
+
+# ==================== Keywords ====================
+# News filtering keywords
+keywords:
+  - "人工智能"
+  - "新能源"
+  - "半导体"
+  - "医药"
+
+# ==================== Risk Settings ====================
+risk:
+  max_position_ratio: 0.3  # 单只股票最大仓位比例
+  max_loss_ratio: 0.1      # 最大亏损容忍度

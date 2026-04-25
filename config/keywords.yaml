@@ -1,0 +1,47 @@
+# Keywords Configuration
+# Keywords for news filtering and sector identification
+
+# ==================== Sector Keywords ====================
+# Maps to sector categories
+sectors:
+  ai:
+    name: "人工智能"
+    keywords: ["AI", "人工智能", "大模型", "ChatGPT", "LLM", "机器学习", "深度学习"]
+
+  energy:
+    name: "新能源"
+    keywords: ["新能源", "光伏", "锂电池", "储能", "风电", "太阳能", "氢能"]
+
+  semiconductor:
+    name: "半导体"
+    keywords: ["半导体", "芯片", "光刻机", "晶圆", "存储", "GPU", "CPU"]
+
+  medicine:
+    name: "医药"
+    keywords: ["医药", "创新药", "疫苗", "生物制药", "医疗器械", "中药"]
+
+  finance:
+    name: "金融"
+    keywords: ["银行", "保险", "证券", "券商", "基金", "信托"]
+
+# ==================== Watch Keywords ====================
+# User-defined watch keywords (overlaps with portfolio keywords)
+watch:
+  # 行业
+  - "AI"
+  - "人工智能"
+  - "新能源"
+  - "半导体"
+
+  # 宏观
+  - "降息"
+  - "央行"
+  - "政策"
+  - "GDP"
+
+# ==================== Exclusion Keywords ====================
+# Keywords to exclude from news filtering
+exclude:
+  - "广告"
+  - "推广"
+  - "营销"

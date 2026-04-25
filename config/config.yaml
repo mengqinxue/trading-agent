@@ -1,0 +1,89 @@
+# Trading Agent Configuration
+# Version: 1.0.0
+
+# ==================== LLM Configuration ====================
+llm:
+  # Primary model
+  provider: "volcengine"  # Options: volcengine, zhipu, openai
+  model: "doubao-pro-32k"
+  api_key: "${VOLCENGINE_API_KEY}"
+  base_url: "https://ark.cn-beijing.volces.com/api/v3"
+  temperature: 0.7
+  max_tokens: 4000
+
+  # Fallback models (if primary fails)
+  fallbacks:
+    - provider: "zhipu"
+      model: "glm-5"
+      api_key: "${ZHIPU_API_KEY}"
+    - provider: "openai"
+      model: "gpt-4o"
+      api_key: "${OPENAI_API_KEY}"
+
+# ==================== Debate Configuration ====================
+debate:
+  max_rounds: 100  # Maximum debate rounds
+  convergence_threshold: 0.8  # Stop when 80% consensus reached
+  buyer_agent_prompt: "agents/prompts/debater_buy.txt"
+  seller_agent_prompt: "agents/prompts/debater_sell.txt"
+
+# ==================== Schedule Configuration ====================
+schedule:
+  # Pre-market analysis (generate candidate pool)
+  pre_market:
+    time: "09:00"
+    days: ["mon", "tue", "wed", "thu", "fri"]
+    enabled: true
+
+  # Post-market decision (run full workflow)
+  post_market:
+    time: "15:30"
+    days: ["mon", "tue", "wed", "thu", "fri"]
+    enabled: true
+
+# ==================== Push Configuration ====================
+push:
+  feishu:
+    webhook: "${FEISHU_WEBHOOK}"
+    enabled: true
+
+  email:
+    smtp_server: "${EMAIL_SMTP}"
+    smtp_user: "${EMAIL_USER}"
+    smtp_password: "${EMAIL_PASSWORD}"
+    to: "${EMAIL_TO}"
+    enabled: false
+
+# ==================== Data Sources ====================
+data_sources:
+  # TrendRadar MCP (news data)
+  trendradar:
+    mcp_path: "${TRENDRADAR_MCP_PATH}"
+    enabled: true
+
+  # akshare (market data)
+  akshare:
+    enabled: true
+    proxy: ""  # Optional proxy URL
+
+  # Stock database
+  stock_db:
+    path: "data/stock_db/stocks.json"
+    update_interval: "weekly"
+
+# ==================== Paths ====================
+paths:
+  data_dir: "data"
+  log_dir: "logs"
+  candidates_dir: "data/candidates"
+  decisions_dir: "data/decisions"
+
+# ==================== Portfolio ====================
+portfolio:
+  config_path: "config/portfolio.yaml"
+  keywords_path: "config/keywords.yaml"
+
+# ==================== Runtime ====================
+runtime:
+  debug: false
+  log_level: "INFO"  # Options: DEBUG, INFO, WARNING, ERROR
