@@ -5,20 +5,20 @@ from typing import Optional
 
 from langgraph.graph import StateGraph, END
 
-from trading_agent.workflows.state import StockAnalysisState
-from trading_agent.agents.stock.init import init_node
-from trading_agent.agents.stock.fundamentals import FundamentalsAnalyzer
-from trading_agent.agents.stock.technical import TechnicalAnalyzer
-from trading_agent.agents.stock.aggregator import aggregator_node
-from trading_agent.agents.stock.bull_advocate import BullAdvocate
-from trading_agent.agents.stock.bear_advocate import BearAdvocate
-from trading_agent.agents.stock.judge import Judge, judge_node
-from trading_agent.agents.stock.position_advisor import PositionAdvisor
-from trading_agent.agents.stock.feishu_push import feishu_push_node
-from trading_agent.core.llm import get_llm
-from trading_agent.core.logger import logger
-from trading_agent.data_sources.data_adapter import get_adapter
-from trading_agent.scheduler.workspace_manager import write_log
+from src.workflows.state import StockAnalysisState
+from src.agents.stock.init import init_node
+from src.agents.stock.fundamentals import FundamentalsAnalyzer
+from src.agents.stock.technical import TechnicalAnalyzer
+from src.agents.stock.aggregator import aggregator_node
+from src.agents.stock.bull_advocate import BullAdvocate
+from src.agents.stock.bear_advocate import BearAdvocate
+from src.agents.stock.judge import Judge, judge_node
+from src.agents.stock.position_advisor import PositionAdvisor
+from src.agents.stock.feishu_push import feishu_push_node
+from src.core.llm import get_llm
+from src.core.logger import logger
+from src.data_sources.data_adapter import get_adapter
+from src.scheduler.workspace_manager import write_log
 
 MAX_DEBATE_ROUNDS = 10
 

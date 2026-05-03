@@ -126,8 +126,8 @@ class FeishuPush(BaseAgent):
 
 def feishu_push_node(state: dict, log_folder: Optional[Path] = None) -> dict:
     """飞书推送节点函数"""
-    from trading_agent.core.logger import logger
-    from trading_agent.scheduler.workspace_manager import write_log
+    from src.core.logger import logger
+    from src.scheduler.workspace_manager import write_log
 
     if log_folder:
         write_log(log_folder, "=== Node: 飞书推送 [开始] ===")

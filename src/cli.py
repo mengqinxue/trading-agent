@@ -5,11 +5,11 @@ import json
 import sys
 from datetime import datetime
 
-from trading_agent.core.logger import logger
-from trading_agent.workflows.market_analysis import run_market_analysis
-from trading_agent.workflows.stock_analysis import run_stock_analysis
-from trading_agent.scheduler.task_queue import task_queue
-from trading_agent.scheduler.workspace_manager import list_all_tasks, get_task_folder_by_id, get_task_detail
+from src.core.logger import logger
+from src.workflows.market_analysis import run_market_analysis
+from src.workflows.stock_analysis import run_stock_analysis
+from src.scheduler.task_queue import task_queue
+from src.scheduler.workspace_manager import list_all_tasks, get_task_folder_by_id, get_task_detail
 
 
 def cli_market_analysis(args):
@@ -220,7 +220,7 @@ def print_market_result(result: dict):
 def cli_web(args):
     """启动 Web 服务"""
     import uvicorn
-    from trading_agent.web.app import app
+    from src.web.app import app
 
     host = args.host or "127.0.0.1"
     port = args.port or 8000
@@ -233,7 +233,7 @@ def cli_web(args):
 
 def cli_update_data(args):
     """更新股票数据"""
-    from trading_agent.data_sources.update_stock_daily import update_all_stocks, update_specific_stocks
+    from src.data_sources.update_stock_daily import update_all_stocks, update_specific_stocks
 
     if args.all:
         print("警告：更新所有股票数据将需要较长时间（约 5500 个股票）")

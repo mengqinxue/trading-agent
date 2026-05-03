@@ -6,8 +6,8 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 
-from trading_agent.scheduler.executor import executor
-from trading_agent.scheduler.workspace_manager import (
+from src.scheduler.executor import executor
+from src.scheduler.workspace_manager import (
     list_all_tasks,
     get_task_folder_by_id,
     get_task_detail,
@@ -60,7 +60,7 @@ class TaskDetailResponse(BaseModel):
 
 def run_task_background(task_id: str):
     """后台执行任务"""
-    from trading_agent.scheduler.task_queue import task_queue
+    from src.scheduler.task_queue import task_queue
     task = task_queue.get_task(task_id)
     if task:
         executor.execute_task(task)

@@ -123,9 +123,9 @@ class DataAggregator(BaseAgent):
 
 def aggregator_node(state: dict, log_folder: Optional[Path] = None) -> dict:
     """汇总节点函数"""
-    from trading_agent.core.llm import get_llm
-    from trading_agent.core.logger import logger
-    from trading_agent.scheduler.workspace_manager import write_log
+    from src.core.llm import get_llm
+    from src.core.logger import logger
+    from src.scheduler.workspace_manager import write_log
 
     if log_folder:
         write_log(log_folder, "=== Node: 数据汇总 [开始] ===")

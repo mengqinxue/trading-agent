@@ -5,15 +5,15 @@ from typing import Optional
 
 from langgraph.graph import StateGraph, END
 
-from trading_agent.workflows.state import MarketAnalysisState
-from trading_agent.agents.market.macro_analyzer import MarketMacroAnalyzer
-from trading_agent.agents.market.sector_analyzer import SectorAnalyzer
-from trading_agent.agents.market.industry_analyzer import IndustryAnalyzer
-from trading_agent.agents.market.stock_screener import StockScreener
-from trading_agent.core.llm import get_llm
-from trading_agent.core.logger import logger
-from trading_agent.data_sources.data_adapter import get_adapter
-from trading_agent.scheduler.workspace_manager import write_log
+from src.workflows.state import MarketAnalysisState
+from src.agents.market.macro_analyzer import MarketMacroAnalyzer
+from src.agents.market.sector_analyzer import SectorAnalyzer
+from src.agents.market.industry_analyzer import IndustryAnalyzer
+from src.agents.market.stock_screener import StockScreener
+from src.core.llm import get_llm
+from src.core.logger import logger
+from src.data_sources.data_adapter import get_adapter
+from src.scheduler.workspace_manager import write_log
 
 
 def create_market_analysis_workflow(log_folder: Optional[Path] = None):

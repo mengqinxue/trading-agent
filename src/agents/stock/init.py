@@ -91,7 +91,7 @@ class InitAgent(BaseAgent):
         """获取股票名称"""
         # 使用 DataAdapter 获取（多数据源支持）
         try:
-            from trading_agent.data_sources.data_adapter import get_adapter
+            from src.data_sources.data_adapter import get_adapter
             adapter = get_adapter()
             name = adapter.batch_get_stock_names([stock_code]).get(stock_code)
             return name or stock_code
@@ -101,8 +101,8 @@ class InitAgent(BaseAgent):
 
 def init_node(state: dict, log_folder: Optional[Path] = None) -> dict:
     """初始化节点函数"""
-    from trading_agent.core.logger import logger
-    from trading_agent.scheduler.workspace_manager import write_log
+    from src.core.logger import logger
+    from src.scheduler.workspace_manager import write_log
 
     if log_folder:
         write_log(log_folder, "=== Node: 初始化 [开始] ===")

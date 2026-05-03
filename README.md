@@ -76,7 +76,7 @@ A股交易辅助系统 - 基于 LangGraph 多 agent 协作的市场和个股分�
 #### 1. 日线数据获取
 
 ```python
-from tmp.data_provider import DataFetcherManager
+from src.data_sources.providers import DataFetcherManager
 
 manager = DataFetcherManager()
 
@@ -430,21 +430,6 @@ trading-agent/
 │   ├── WORKPLAN.md             # 工作计划
 │   └── ARCHITECTURE.md         # 系统架构
 │
-├── tmp/data_provider/          # 数据源管理系统 ⭐
-│   ├── __init__.py             # 包入口
-│   ├── base.py                 # 基类 + 管理器
-│   ├── realtime_types.py       # 统一数据类型 + 熔断器
-│   ├── akshare_fetcher.py      # Akshare 数据源
-│   ├── efinance_fetcher.py     # Efinance 数据源
-│   ├── tushare_fetcher.py      # Tushare 数据源
-│   ├── pytdx_fetcher.py        # 通达信数据源
-│   ├── baostock_fetcher.py     # Baostock 数据源
-│   ├── yfinance_fetcher.py     # Yfinance 数据源
-│   ├── longbridge_fetcher.py   # 长桥数据源
-│   ├── tickflow_fetcher.py     # TickFlow 数据源
-│   ├── fundamental_adapter.py  # 基本面适配器
-│   └── us_index_mapping.py     # 美股指数映射
-│
 ├── workspace/                  # 任务工作目录
 │   ├── ma_20260503_abc12345/   # 市场分析任务文件夹
 │   │   ├── status.json         # 任务状态
@@ -457,7 +442,7 @@ trading-agent/
 │   ├── stock_daily/            # 5400+ 日线 CSV
 │   └── archive/                # 退市股票归档
 │
-├── src/trading_agent/
+├── src/                        # 源代码 ⭐
 │   ├── cli.py                  # 命令行入口
 │   │
 │   ├── core/                   # 核心模块
@@ -466,7 +451,19 @@ trading-agent/
 │   │   └── logger.py           # 日志模块
 │   │
 │   ├── data_sources/           # 数据源
-│   │   └ akshare_data.py       # A股数据获取
+│   │   ├── data_adapter.py     # 统一数据接口 ⭐
+│   │   ├── providers/          # 多数据源管理 ⭐
+│   │   │   ├── base.py         # 基类 + 管理器
+│   │   │   ├── realtime_types.py # 统一数据类型 + 熔断器
+│   │   │   ├── akshare_fetcher.py  # Akshare 数据源
+│   │   │   ├── efinance_fetcher.py  # Efinance 数据源
+│   │   │   ├── tushare_fetcher.py   # Tushare 数据源
+│   │   │   ├── pytdx_fetcher.py     # 通达信数据源
+│   │   │   ├── baostock_fetcher.py  # Baostock 数据源
+│   │   │   ├── yfinance_fetcher.py  # Yfinance 数据源
+│   │   │   └── longbridge_fetcher.py # 长桥数据源
+│   │   └ akshare_data.py       # A股数据获取（备用）
+│   │   └ stock_data_manager.py # 股票数据批量更新
 │   │
 │   ├── agents/                 # Agent 实现
 │   │   ├── base.py             # Agent 基类

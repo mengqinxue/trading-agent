@@ -29,7 +29,10 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project.scripts]
-trading-agent = "trading_agent.cli:main"
+trading-agent = "src.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
 
 [tool.black]
 line-length = 88

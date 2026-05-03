@@ -4,8 +4,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from trading_agent.scheduler.task_queue import task_queue, Task
-from trading_agent.scheduler.workspace_manager import (
+from src.scheduler.task_queue import task_queue, Task
+from src.scheduler.workspace_manager import (
     create_task_folder,
     write_log,
     write_result,
@@ -15,7 +15,7 @@ from trading_agent.scheduler.workspace_manager import (
     get_task_folder_by_id,
     generate_task_id
 )
-from trading_agent.core.logger import logger as app_logger
+from src.core.logger import logger as app_logger
 
 
 class TaskExecutor:
@@ -154,7 +154,7 @@ class TaskExecutor:
 
     def _run_market_analysis(self, task: Task) -> dict:
         """运行市场分析"""
-        from trading_agent.workflows.market_analysis import run_market_analysis_with_logging
+        from src.workflows.market_analysis import run_market_analysis_with_logging
 
         write_log(self.current_folder, "启动市场分析 Workflow")
 
@@ -177,7 +177,7 @@ class TaskExecutor:
 
     def _run_stock_analysis(self, task: Task) -> dict:
         """运行股票分析（支持每只股票独立持仓）"""
-        from trading_agent.workflows.stock_analysis import run_stock_analysis_with_logging
+        from src.workflows.stock_analysis import run_stock_analysis_with_logging
 
         # 获取股票列表和持仓
         stocks = task.stocks or []
