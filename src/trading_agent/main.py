@@ -4,6 +4,7 @@ Trading Agent - Main entry point
 
 import asyncio
 from datetime import datetime
+from pathlib import Path
 
 from trading_agent.graph import workflow_app, build_workflow
 from trading_agent.graph.state import create_initial_state, RunType
@@ -31,8 +32,8 @@ async def run_workflow(run_type: RunType = RunType.POST_MARKET):
     settings = load_config()
 
     # Setup log directory
-    log_dir = settings.log_dir
-    log_dir.mkdir(parents=True, exist_ok=True)
+    log_dir = settings.paths.log_dir
+    Path(log_dir).mkdir(parents=True, exist_ok=True)
 
     # Create initial state
     state = create_initial_state(run_type)
@@ -45,7 +46,8 @@ async def run_workflow(run_type: RunType = RunType.POST_MARKET):
 
     try:
         # Execute workflow
-        result = await app.ainvoke(state)
+        config = {"configurable": {"thread_id": str(state["run_id"])}}
+        result = await app.ainvoke(state, config=config)
 
         logger.info(f"Workflow completed")
         logger.info(f"End time: {result.get('end_time')}")
