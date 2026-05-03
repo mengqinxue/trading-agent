@@ -86,6 +86,7 @@ def get_logger(name: str) -> logging.Logger:
         parent = logging.getLogger("trading_agent")
         if parent.handlers:
             logger.handlers = parent.handlers
+            logger.propagate = False  # prevent double logging
 
         _loggers[name] = logger
 
