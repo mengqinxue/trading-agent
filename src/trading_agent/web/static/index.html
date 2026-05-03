@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trading Agent - A股交易辅助系统</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Trading Agent</h1>
+            <p>A股交易辅助系统 - LangGraph 多 agent 分析</p>
+        </header>
+
+        <nav>
+            <button id="btn-market-analysis">市场分析</button>
+            <button id="btn-stock-analysis">股票分析</button>
+            <button id="btn-view-tasks">查看任务</button>
+            <button id="btn-workflow-doc">Workflow 说明</button>
+        </nav>
+
+        <main>
+            <!-- 市场分析面板 -->
+            <div id="panel-market-analysis" class="panel hidden">
+                <h2>市场分析</h2>
+                <p>分析A股市场整体形势，识别热点板块和潜力个股。</p>
+                <button id="btn-create-market-task" class="primary-btn">创建分析任务</button>
+            </div>
+
+            <!-- 股票分析面板 -->
+            <div id="panel-stock-analysis" class="panel hidden">
+                <h2>股票分析</h2>
+                <p>分析具体股票的投资价值，给出买卖建议。支持批量分析，每只股票可设置独立持仓。</p>
+
+                <!-- 股票列表输入区 -->
+                <div id="stock-input-area">
+                    <div class="form-group">
+                        <label>股票列表（可添加多只，每只设置持仓金额）：</label>
+                        <div id="stock-list-container">
+                            <!-- 动态添加的股票行 -->
+                        </div>
+                        <button id="btn-add-stock" class="secondary-btn">+ 添加股票</button>
+                    </div>
+                </div>
+
+                <!-- 快捷批量输入 -->
+                <div class="form-group quick-input">
+                    <label for="batch-stock-codes">快捷批量输入（逗号分隔）：</label>
+                    <input type="text" id="batch-stock-codes" placeholder="如：600036, 000001, 300750">
+                    <button id="btn-batch-add" class="secondary-btn">批量添加</button>
+                </div>
+
+                <!-- 默认持仓设置 -->
+                <div class="form-group">
+                    <label for="default-position">默认持仓（人民币）：</label>
+                    <input type="number" id="default-position" placeholder="0" value="0">
+                    <small>新添加的股票默认使用此持仓金额</small>
+                </div>
+
+                <button id="btn-create-stock-task" class="primary-btn">创建批量分析任务</button>
+
+                <!-- 股票列表预览 -->
+                <div id="stock-preview" class="hidden">
+                    <h4>待分析股票列表</h4>
+                    <table id="stock-preview-table">
+                        <thead>
+                            <tr>
+                                <th>代码</th>
+                                <th>名称</th>
+                                <th>持仓金额</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="stock-preview-body">
+                        </tbody>
+                    </table>
+                    <p id="stock-count">共 0 只股票待分析</p>
+                </div>
+            </div>
+
+            <!-- 任务列表面板 -->
+            <div id="panel-tasks" class="panel">
+                <h2>任务列表</h2>
+                <div id="tasks-list"></div>
+            </div>
+
+            <!-- 任务详情面板 -->
+            <div id="panel-task-detail" class="panel hidden">
+                <h2>任务详情</h2>
+                <button id="btn-back-tasks" class="secondary-btn" style="margin-bottom: 20px;">返回任务列表</button>
+
+                <!-- 基本信息 -->
+                <div id="task-basic-info" class="task-info-section"></div>
+
+                <!-- Workflow 流程图 -->
+                <div id="workflow-flowchart" class="workflow-flowchart"></div>
+
+                <!-- Summary -->
+                <div id="task-summary" class="task-summary-section"></div>
+
+                <!-- 日志（可折叠） -->
+                <div class="logs-section">
+                    <h3 class="logs-header clickable" id="logs-toggle">
+                        <span>执行日志</span>
+                        <span class="toggle-icon">▼</span>
+                    </h3>
+                    <div id="task-logs" class="logs-content collapsed"></div>
+                </div>
+            </div>
+
+            <!-- Workflow 说明面板 -->
+            <div id="panel-workflow-doc" class="panel hidden">
+                <h2>Workflow 分析流程说明</h2>
+                <p>了解系统如何通过 LangGraph 多 agent 协作完成市场分析和股票分析。</p>
+
+                <!-- Tab 导航 -->
+                <div class="tab-nav">
+                    <button class="tab-btn active" data-tab="stock-workflow">个股分析流程</button>
+                    <button class="tab-btn" data-tab="market-workflow">市场分析流程</button>
+                </div>
+
+                <!-- 个股分析 Workflow Tab -->
+                <div id="stock-workflow-tab" class="tab-content active">
+                    <h3>股票分析 Workflow</h3>
+                    <p class="workflow-desc">
+                        股票分析采用<strong>多 agent 辩论机制</strong>，通过正反方辩论深度分析股票投资价值。
+                        辩论最多进行 <strong>10 轮</strong>，确保分析充分深入。
+                    </p>
+
+                    <!-- Workflow 图 -->
+                    <div class="workflow-diagram">
+                        <div class="workflow-row">
+                            <div class="workflow-node parallel-node">
+                                <div class="node-title">基本面分析</div>
+                                <div class="node-desc">财务指标、行业地位、估值水平</div>
+                                <div class="node-agent">Agent: FundamentalsAnalyzer</div>
+                            </div>
+                            <div class="workflow-arrow parallel-arrow">→</div>
+                            <div class="workflow-node parallel-node">
+                                <div class="node-title">技术面分析</div>
+                                <div class="node-desc">K线形态、技术指标、量价关系</div>
+                                <div class="node-agent">Agent: TechnicalAnalyzer</div>
+                            </div>
+                        </div>
+
+                        <div class="workflow-arrow down-arrow">↓</div>
+
+                        <!-- 辩论循环 -->
+                        <div class="debate-loop">
+                            <div class="loop-label">辩论环节（最多 10 轮）</div>
+                            <div class="workflow-row debate-row">
+                                <div class="workflow-node bull-node">
+                                    <div class="node-title">正方辩论 (买方)</div>
+                                    <div class="node-desc">提出买入理由，反驳反方观点</div>
+                                    <div class="node-agent">Agent: BullAdvocate</div>
+                                </div>
+                                <div class="workflow-arrow debate-arrow">→</div>
+                                <div class="workflow-node bear-node">
+                                    <div class="node-title">反方辩论 (卖方)</div>
+                                    <div class="node-desc">提出卖出理由，反驳正方观点</div>
+                                    <div class="node-agent">Agent: BearAdvocate</div>
+                                </div>
+                            </div>
+                            <div class="loop-indicator">
+                                <span class="loop-icon">↺</span>
+                                <span class="loop-text">继续辩论？（未达 10 諨）</span>
+                            </div>
+                        </div>
+
+                        <div class="workflow-arrow down-arrow">↓</div>
+
+                        <div class="workflow-node decision-node">
+                            <div class="node-title">综合决策</div>
+                            <div class="node-desc">评估正反方论点，做出 buy/sell/hold 决策</div>
+                            <div class="node-agent">Agent: Judge</div>
+                        </div>
+
+                        <div class="workflow-arrow down-arrow">↓</div>
+
+                        <div class="workflow-node result-node">
+                            <div class="node-title">持仓建议</div>
+                            <div class="node-desc">操作建议、仓位、止损止盈、风险提示</div>
+                            <div class="node-agent">Agent: PositionAdvisor</div>
+                        </div>
+                    </div>
+
+                    <!-- Agent 说明 -->
+                    <div class="agents-section">
+                        <h4>参与 Agent 详细说明</h4>
+                        <div class="agent-grid">
+                            <div class="agent-card">
+                                <div class="agent-name">FundamentalsAnalyzer</div>
+                                <div class="agent-role">基本面分析师</div>
+                                <ul class="agent-tasks">
+                                    <li>分析财务指标（ROE、净利润率、负债率）</li>
+                                    <li>评估行业地位和竞争优势</li>
+                                    <li>判断估值水平（PE、PB）</li>
+                                    <li>给出基本面评分（1-10分）</li>
+                                </ul>
+                            </div>
+                            <div class="agent-card">
+                                <div class="agent-name">TechnicalAnalyzer</div>
+                                <div class="agent-role">技术面分析师</div>
+                                <ul class="agent-tasks">
+                                    <li>分析K线形态和趋势</li>
+                                    <li>计算技术指标（MACD、KDJ）</li>
+                                    <li>判断支撑位和压力位</li>
+                                    <li>给出买入/卖出信号</li>
+                                </ul>
+                            </div>
+                            <div class="agent-card bull-card">
+                                <div class="agent-name">BullAdvocate</div>
+                                <div class="agent-role">正方辩论师</div>
+                                <ul class="agent-tasks">
+                                    <li>提出支持买入的理由</li>
+                                    <li>强调基本面和技术面优势</li>
+                                    <li>反驳反方的风险担忧</li>
+                                    <li>提供积极的市场预期</li>
+                                </ul>
+                            </div>
+                            <div class="agent-card bear-card">
+                                <div class="agent-name">BearAdvocate</div>
+                                <div class="agent-role">反方辩论师</div>
+                                <ul class="agent-tasks">
+                                    <li>提出支持卖出/观望的理由</li>
+                                    <li>指出基本面和技术面风险</li>
+                                    <li>反驳正方的乐观预期</li>
+                                    <li>提供谨慎的风险提示</li>
+                                </ul>
+                            </div>
+                            <div class="agent-card">
+                                <div class="agent-name">Judge</div>
+                                <div class="agent-role">投资决策师</div>
+                                <ul class="agent-tasks">
+                                    <li>客观评估正反方论点</li>
+                                    <li>权衡买入和卖出理由</li>
+                                    <li>考虑基本面和技术面评分</li>
+                                    <li>做出最终决策（buy/sell/hold）</li>
+                                </ul>
+                            </div>
+                            <div class="agent-card">
+                                <div class="agent-name">PositionAdvisor</div>
+                                <div class="agent-role">持仓顾问</div>
+                                <ul class="agent-tasks">
+                                    <li>根据决策给出操作建议</li>
+                                    <li>建议仓位和买入金额</li>
+                                    <li>设置止损止盈价位</li>
+                                    <li>提供风险提示</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 输入输出说明 -->
+                    <div class="io-section">
+                        <h4>输入与输出</h4>
+                        <div class="io-grid">
+                            <div class="io-box input-box">
+                                <div class="io-title">输入参数</div>
+                                <ul>
+                                    <li><strong>股票代码</strong>：如 000001.SZ</li>
+                                    <li><strong>当前持仓</strong>：持有该股票的金额（元）</li>
+                                </ul>
+                            </div>
+                            <div class="io-box output-box">
+                                <div class="io-title">输出结果</div>
+                                <ul>
+                                    <li><strong>决策</strong>：buy/sell/hold</li>
+                                    <li><strong>操作建议</strong>：买入金额/卖出数量</li>
+                                    <li><strong>止损止盈</strong>：价位建议</li>
+                                    <li><strong>风险提示</strong>：需关注的风险点</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 市场分析 Workflow Tab -->
+                <div id="market-workflow-tab" class="tab-content">
+                    <h3>市场分析 Workflow</h3>
+                    <p class="workflow-desc">
+                        市场分析采用<strong>线性流程</strong>，依次分析宏观形势、热点板块、行业潜力和个股机会。
+                        流程简洁高效，全面把握市场动态。
+                    </p>
+
+                    <!-- Workflow 图 -->
+                    <div class="workflow-diagram linear-diagram">
+                        <div class="workflow-node">
+                            <div class="node-title">市场宏观分析</div>
+                            <div class="node-desc">判断牛市/熊市/震荡市，分析大盘走势</div>
+                            <div class="node-agent">Agent: MarketMacroAnalyzer</div>
+                        </div>
+
+                        <div class="workflow-arrow down-arrow">↓</div>
+
+                        <div class="workflow-node">
+                            <div class="node-title">板块分析</div>
+                            <div class="node-desc">识别热点板块，分析资金流向</div>
+                            <div class="node-agent">Agent: SectorAnalyzer</div>
+                        </div>
+
+                        <div class="workflow-arrow down-arrow">↓</div>
+
+                        <div class="workflow-node">
+                            <div class="node-title">行业分析</div>
+                            <div class="node-desc">评估行业增长潜力、政策支持</div>
+                            <div class="node-agent">Agent: IndustryAnalyzer</div>
+                        </div>
+
+                        <div class="workflow-arrow down-arrow">↓</div>
+
+                        <div class="workflow-node result-node">
+                            <div class="node-title">个股筛选</div>
+                            <div class="node-desc">从热点行业中筛选潜力个股</div>
+                            <div class="node-agent">Agent: StockScreener</div>
+                        </div>
+                    </div>
+
+                    <!-- Agent 说明 -->
+                    <div class="agents-section">
+                        <h4>参与 Agent 详细说明</h4>
+                        <div class="agent-grid">
+                            <div class="agent-card">
+                                <div class="agent-name">MarketMacroAnalyzer</div>
+                                <div class="agent-role">市场宏观分析师</div>
+                                <ul class="agent-tasks">
+                                    <li>分析主要指数走势（上证、深证、创业板）</li>
+                                    <li>判断市场成交量变化</li>
+                                    <li>评估涨跌比例和市场情绪</li>
+                                    <li>给出市场形势判断（牛市/熊市/震荡）</li>
+                                </ul>
+                            </div>
+                            <div class="agent-card">
+                                <div class="agent-name">SectorAnalyzer</div>
+                                <div class="agent-role">板块分析师</div>
+                                <ul class="agent-tasks">
+                                    <li>分析板块涨幅排名</li>
+                                    <li>识别资金流向热点</li>
+                                    <li>判断板块热度持续性</li>
+                                    <li>给出热点板块 Top 5</li>
+                                </ul>
+                            </div>
+                            <div class="agent-card">
+                                <div class="agent-name">IndustryAnalyzer</div>
+                                <div class="agent-role">行业分析师</div>
+                                <ul class="agent-tasks">
+                                    <li>分析行业增长趋势</li>
+                                    <li>评估政策支持情况</li>
+                                    <li>判断市场规模和竞争格局</li>
+                                    <li>给出行业评分和投资建议</li>
+                                </ul>
+                            </div>
+                            <div class="agent-card">
+                                <div class="agent-name">StockScreener</div>
+                                <div class="agent-role">个股筛选师</div>
+                                <ul class="agent-tasks">
+                                    <li>从热点行业筛选个股</li>
+                                    <li>评估行业龙头地位</li>
+                                    <li>分析财务和技术指标</li>
+                                    <li>给出推荐个股 Top 10</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 输入输出说明 -->
+                    <div class="io-section">
+                        <h4>输入与输出</h4>
+                        <div class="io-grid">
+                            <div class="io-box input-box">
+                                <div class="io-title">输入参数</div>
+                                <ul>
+                                    <li><strong>无需输入</strong>：自动获取市场数据</li>
+                                    <li>数据源：Akshare（实时A股数据）</li>
+                                </ul>
+                            </div>
+                            <div class="io-box output-box">
+                                <div class="io-title">输出结果</div>
+                                <ul>
+                                    <li><strong>市场形势</strong>：牛市/熊市/震荡市</li>
+                                    <li><strong>热点板块</strong>：Top 5 板块及分析</li>
+                                    <li><strong>行业分析</strong>：行业潜力评分</li>
+                                    <li><strong>推荐个股</strong>：Top 10 个股及理由</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>Trading Agent v0.1.0 | Powered by LangGraph + GLM-5</p>
+        </footer>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

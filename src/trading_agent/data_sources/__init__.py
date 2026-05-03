@@ -1,68 +1,16 @@
-"""
-Data sources module
+"""数据源模块"""
 
-Provides interfaces to external data sources like TrendRadar and Akshare.
-"""
+from .akshare_data import AkshareDataSource
+from .trendradar import TrendRadarMCPClient
+from .data_adapter import DataAdapter, get_adapter
 
-from .trendradar import (
-    get_hot_news,
-    get_hot_news_async,
-    get_hot_news_sync,
-    get_client,
-    get_mock_news,
-    set_mock_mode,
-    TrendRadarClient,
-    HotNewsItem,
-    HotNewsResponse,
-)
-
-from .akshare_data import (
-    get_stock_info,
-    get_kline_data,
-    get_financial_data,
-    is_valid_stock_code,
-    get_market_from_code,
-    StockInfo,
-    KlineData,
-    KlineResponse,
-    FinancialData,
-    FinancialResponse,
-)
-
-from .aggregator import (
-    DataAggregator,
-    StockDataBundle,
-    MarketOverview,
-    get_stock_bundle,
-    get_market_summary,
-)
+# 多数据源管理器（可选使用）
+from .providers import DataFetcherManager
 
 __all__ = [
-    # TrendRadar
-    "get_hot_news",
-    "get_hot_news_async",
-    "get_hot_news_sync",
-    "get_client",
-    "get_mock_news",
-    "set_mock_mode",
-    "TrendRadarClient",
-    "HotNewsItem",
-    "HotNewsResponse",
-    # Akshare
-    "get_stock_info",
-    "get_kline_data",
-    "get_financial_data",
-    "is_valid_stock_code",
-    "get_market_from_code",
-    "StockInfo",
-    "KlineData",
-    "KlineResponse",
-    "FinancialData",
-    "FinancialResponse",
-    # Aggregator
-    "DataAggregator",
-    "StockDataBundle",
-    "MarketOverview",
-    "get_stock_bundle",
-    "get_market_summary",
+    "AkshareDataSource",
+    "TrendRadarMCPClient",
+    "DataAdapter",
+    "get_adapter",
+    "DataFetcherManager",
 ]

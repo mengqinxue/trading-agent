@@ -1,5 +1,3 @@
-"""
-Trading Agent - AI-powered stock investment decision system
-"""
+"""Trading Agent - A股交易辅助系统"""
 
 __version__ = "0.1.0"

@@ -1,513 +1,198 @@
-"""
-TrendRadar MCP integration module
-
-Provides access to hot news data from TrendRadar via MCP protocol.
-Includes mock data fallback for development/testing.
-"""
+"""TrendRadar MCP 客户端 - 获取热点新闻和板块"""
 
 import json
-import logging
-from datetime import datetime
-from typing import Any, Optional
-
-import httpx
-from pydantic import BaseModel, Field
-
-logger = logging.getLogger("trading_agent.data_sources.trendradar")
+import os
+from datetime import datetime, timedelta
+from pathlib import Path
+from typing import Optional
 
 
-# ============== Pydantic Models ==============
+class TrendRadarMCPClient:
+    """TrendRadar MCP 客户端
 
+    获取热点新闻和板块信息，用于市场分析和个股筛选。
+    """
 
-class HotNewsItem(BaseModel):
-    """Hot news item from TrendRadar"""
-
-    title: str = Field(..., description="News title")
-    source: str = Field(..., description="Platform source (e.g., 'zhihu', 'weibo')")
-    url: Optional[str] = Field(None, description="News URL if available")
-    heat_score: float = Field(0.0, description="Heat/popularity score")
-    sector: Optional[str] = Field(None, description="Related sector/topic")
-    rank: Optional[int] = Field(None, description="Ranking position")
-    timestamp: Optional[str] = Field(None, description="Fetch timestamp")
-
-    # Additional metadata from TrendRadar
-    platform_name: Optional[str] = Field(None, description="Platform display name")
-    hot_tag: Optional[str] = Field(None, description="Hot tag label")
-
-
-class HotNewsResponse(BaseModel):
-    """Response from get_hot_news"""
-
-    success: bool = Field(True, description="Whether the request succeeded")
-    data: list[HotNewsItem] = Field(default_factory=list, description="News items")
-    source: str = Field("mock", description="Data source (mock/mcp)")
-    error: Optional[str] = Field(None, description="Error message if failed")
-
-
-# ============== Mock Data ==============
-
-
-MOCK_HOT_NEWS: list[dict[str, Any]] = [
-    {
-        "title": "AI芯片需求激增，英伟达股价创历史新高",
-        "source": "zhihu",
-        "url": None,
-        "heat_score": 95.5,
-        "sector": "半导体",
-        "rank": 1,
-        "platform_name": "知乎",
-        "hot_tag": "科技",
-    },
-    {
-        "title": "新能源汽车销量突破百万，比亚迪领跑市场",
-        "source": "weibo",
-        "url": None,
-        "heat_score": 88.2,
-        "sector": "新能源汽车",
-        "rank": 2,
-        "platform_name": "微博",
-        "hot_tag": "汽车",
-    },
-    {
-        "title": "央行降准释放流动性，A股市场迎来利好",
-        "source": "toutiao",
-        "url": None,
-        "heat_score": 82.0,
-        "sector": "金融",
-        "rank": 3,
-        "platform_name": "今日头条",
-        "hot_tag": "财经",
-    },
-    {
-        "title": "茅台年报公布，净利润同比增长15%",
-        "source": "zhihu",
-        "url": None,
-        "heat_score": 75.8,
-        "sector": "白酒",
-        "rank": 4,
-        "platform_name": "知乎",
-        "hot_tag": "消费",
-    },
-    {
-        "title": "光伏组件价格触底，行业整合加速",
-        "source": "weibo",
-        "url": None,
-        "heat_score": 70.3,
-        "sector": "光伏",
-        "rank": 5,
-        "platform_name": "微博",
-        "hot_tag": "能源",
-    },
-    {
-        "title": "医药板块异动，创新药获批引发关注",
-        "source": "toutiao",
-        "url": None,
-        "heat_score": 65.5,
-        "sector": "医药",
-        "rank": 6,
-        "platform_name": "今日头条",
-        "hot_tag": "医疗",
-    },
-    {
-        "title": "地产政策松绑信号，房企融资环境改善",
-        "source": "zhihu",
-        "url": None,
-        "heat_score": 60.0,
-        "sector": "房地产",
-        "rank": 7,
-        "platform_name": "知乎",
-        "hot_tag": "房产",
-    },
-    {
-        "title": "ChatGPT商业化加速，AI应用赛道爆发",
-        "source": "weibo",
-        "url": None,
-        "heat_score": 55.8,
-        "sector": "AI应用",
-        "rank": 8,
-        "platform_name": "微博",
-        "hot_tag": "科技",
-    },
-    {
-        "title": "锂矿价格企稳，电池厂商库存压力缓解",
-        "source": "toutiao",
-        "url": None,
-        "heat_score": 50.2,
-        "sector": "锂电",
-        "rank": 9,
-        "platform_name": "今日头条",
-        "hot_tag": "能源",
-    },
-    {
-        "title": "军工订单饱满，国防信息化提速",
-        "source": "zhihu",
-        "url": None,
-        "heat_score": 45.5,
-        "sector": "军工",
-        "rank": 10,
-        "platform_name": "知乎",
-        "hot_tag": "国防",
-    },
-]
-
-
-# ============== MCP Client ==============
-
-
-class TrendRadarClient:
-    """Client for TrendRadar MCP server"""
-
-    def __init__(
-        self,
-        base_url: str = "http://localhost:3333",
-        timeout: float = 30.0,
-    ):
-        """
-        Initialize TrendRadar MCP client
+    def __init__(self, data_path: Optional[str] = None):
+        """初始化
 
         Args:
-            base_url: MCP server base URL
-            timeout: Request timeout in seconds
+            data_path: TrendRadar 数据目录路径
         """
-        self.base_url = base_url
-        self.timeout = timeout
-        self._session_id: Optional[str] = None
+        self.data_path = Path(data_path or os.environ.get("TRENDARAR_DATA_PATH", ""))
 
-    def _build_request(
-        self,
-        method: str,
-        params: Optional[dict[str, Any]] = None,
-        request_id: int = 1,
-    ) -> dict[str, Any]:
-        """
-        Build MCP JSON-RPC request
+        # 如果没有配置，尝试常见路径
+        if not self.data_path.exists():
+            common_paths = [
+                Path.home() / "Documents" / "workspace" / "TrendRadar" / "data",
+                Path.home() / "workspace" / "TrendRadar" / "data",
+                Path("data") / "trendradar",
+            ]
+            for p in common_paths:
+                if p.exists():
+                    self.data_path = p
+                    break
+
+    def get_hot_news(self, date: Optional[str] = None, keywords: Optional[list] = None) -> list:
+        """获取热点新闻
 
         Args:
-            method: MCP method name (e.g., "tools/call")
-            params: Method parameters
-            request_id: Request ID for JSON-RPC
+            date: 日期字符串 (YYYY-MM-DD)，默认今天
+            keywords: 过滤关键词列表
 
         Returns:
-            JSON-RPC request dictionary
+            新闻列表
         """
-        return {
-            "jsonrpc": "2.0",
-            "id": request_id,
-            "method": method,
-            "params": params or {},
+        if not date:
+            date = datetime.now().strftime("%Y-%m-%d")
+
+        # 尝试读取 TrendRadar 数据
+        news_file = self.data_path / "daily" / f"{date}.json"
+
+        if news_file.exists():
+            try:
+                news = json.loads(news_file.read_text(encoding="utf-8"))
+
+                # 过滤关键词
+                if keywords:
+                    news = [
+                        n for n in news
+                        if any(k in n.get("title", "") or k in n.get("content", "") for k in keywords)
+                    ]
+
+                return news
+            except Exception:
+                pass
+
+        # 如果没有数据文件，返回模拟数据
+        return self._get_mock_news(date)
+
+    def get_hot_sectors(self, news: Optional[list] = None, date: Optional[str] = None) -> list:
+        """从新闻中提取热点板块
+
+        Args:
+            news: 新闻列表，如果不提供则自动获取
+            date: 日期
+
+        Returns:
+            热点板块列表 [{name, heat_score, leaders, news_count}]
+        """
+        if not news:
+            news = self.get_hot_news(date)
+
+        if not news:
+            return self._get_mock_sectors()
+
+        # 分析新闻标题和内容，提取板块关键词
+        sector_keywords = {
+            "半导体": ["半导体", "芯片", "晶圆", "封测"],
+            "新能源": ["新能源", "光伏", "风电", "储能", "锂电池"],
+            "医药": ["医药", "生物", "疫苗", "创新药"],
+            "AI": ["AI", "人工智能", "大模型", "算力"],
+            "金融": ["银行", "保险", "券商", "金融"],
+            "消费": ["消费", "零售", "白酒", "食品"],
         }
 
-    async def call_tool(
-        self,
-        tool_name: str,
-        arguments: Optional[dict[str, Any]] = None,
-    ) -> dict[str, Any]:
-        """
-        Call a MCP tool
+        sectors = []
+        for sector, keywords in sector_keywords.items():
+            count = sum(
+                1 for n in news
+                if any(k in n.get("title", "") or k in n.get("content", "") for k in keywords)
+            )
+
+            if count > 0:
+                sectors.append({
+                    "name": sector,
+                    "heat_score": count * 10,  # 简化评分
+                    "news_count": count,
+                    "leaders": [],  # 需要额外分析
+                    "keywords": keywords
+                })
+
+        # 按热度排序
+        sectors.sort(key=lambda x: x["heat_score"], reverse=True)
+
+        return sectors[:5]  # 返回 Top 5
+
+    def identify_leaders(self, sector: dict, stock_db: Optional[dict] = None) -> list:
+        """识别板块龙头
 
         Args:
-            tool_name: Name of the tool to call
-            arguments: Tool arguments
+            sector: 板块信息
+            stock_db: 股票数据库
 
         Returns:
-            Tool result as dictionary
-
-        Raises:
-            httpx.HTTPError: HTTP request failed
-            ValueError: MCP response error
+            龙头股票列表 [{code, name, reason}]
         """
-        request = self._build_request(
-            method="tools/call",
-            params={
-                "name": tool_name,
-                "arguments": arguments or {},
+        # 简化实现：返回板块常见龙头
+        sector_leaders = {
+            "半导体": ["600036", "002371", "603501"],
+            "新能源": ["300750", "002594", "601012"],
+            "医药": ["300760", "000661", "600276"],
+            "AI": ["000977", "002230", "300474"],
+            "金融": ["601318", "600036", "601398"],
+            "消费": ["000858", "600519", "000568"],
+        }
+
+        leaders = []
+        sector_name = sector.get("name", "")
+
+        for code in sector_leaders.get(sector_name, [])[:3]:
+            leaders.append({
+                "code": code,
+                "name": self._get_stock_name(code),
+                "reason": f"{sector_name}板块龙头"
+            })
+
+        return leaders
+
+    def _get_mock_news(self, date: str) -> list:
+        """获取模拟新闻数据"""
+        return [
+            {
+                "title": "半导体板块大涨，芯片股集体走强",
+                "content": "今日半导体板块表现强劲...",
+                "source": "财经新闻",
+                "date": date
             },
-        )
+            {
+                "title": "新能源政策利好，光伏产业迎机遇",
+                "content": "国家出台新能源支持政策...",
+                "source": "行业资讯",
+                "date": date
+            },
+            {
+                "title": "AI大模型突破，算力需求激增",
+                "content": "AI技术快速发展...",
+                "source": "科技新闻",
+                "date": date
+            }
+        ]
 
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
-            response = await client.post(
-                f"{self.base_url}/mcp",
-                json=request,
-                headers={
-                    "Content-Type": "application/json",
-                    "Accept": "application/json",
-                },
-            )
-            response.raise_for_status()
+    def _get_mock_sectors(self) -> list:
+        """获取模拟板块数据"""
+        return [
+            {"name": "半导体", "heat_score": 80, "news_count": 8, "leaders": []},
+            {"name": "新能源", "heat_score": 70, "news_count": 7, "leaders": []},
+            {"name": "AI", "heat_score": 60, "news_count": 6, "leaders": []},
+            {"name": "医药", "heat_score": 50, "news_count": 5, "leaders": []},
+            {"name": "消费", "heat_score": 40, "news_count": 4, "leaders": []},
+        ]
 
-            result = response.json()
-
-            # Check for JSON-RPC error
-            if "error" in result:
-                error = result.get("error", {})
-                raise ValueError(
-                    f"MCP tool call error: {error.get('message', 'Unknown error')}"
-                )
-
-            # Extract tool result from MCP response
-            content = result.get("result", {}).get("content", [])
-            if content and len(content) > 0:
-                # Parse text content as JSON
-                text_content = content[0].get("text", "")
-                if text_content:
-                    return json.loads(text_content)
-
-            return {}
-
-    async def get_latest_news(
-        self,
-        platforms: Optional[list[str]] = None,
-        limit: int = 50,
-        include_url: bool = False,
-    ) -> list[HotNewsItem]:
-        """
-        Get latest hot news from TrendRadar
-
-        Args:
-            platforms: Platform IDs to filter (e.g., ['zhihu', 'weibo'])
-            limit: Maximum number of news items to return
-            include_url: Whether to include URL in results
-
-        Returns:
-            List of HotNewsItem
-        """
-        try:
-            result = await self.call_tool(
-                tool_name="get_latest_news",
-                arguments={
-                    "platforms": platforms,
-                    "limit": limit,
-                    "include_url": include_url,
-                },
-            )
-
-            if result.get("success"):
-                raw_data = result.get("data", [])
-                return [HotNewsItem(**item) for item in raw_data]
-            else:
-                error = result.get("error", {})
-                logger.warning(
-                    f"TrendRadar get_latest_news failed: {error.get('message', 'Unknown')}"
-                )
-                return []
-
-        except Exception as e:
-            logger.error(f"Failed to get latest news from TrendRadar: {e}")
-            return []
-
-    async def get_trending_topics(
-        self,
-        top_n: int = 10,
-        mode: str = "current",
-        extract_mode: str = "keywords",
-    ) -> dict[str, Any]:
-        """
-        Get trending topics from TrendRadar
-
-        Args:
-            top_n: Number of top topics to return
-            mode: Time mode ("daily" or "current")
-            extract_mode: Extract mode ("keywords" or "auto_extract")
-
-        Returns:
-            Trending topics with frequency counts
-        """
-        try:
-            result = await self.call_tool(
-                tool_name="get_trending_topics",
-                arguments={
-                    "top_n": top_n,
-                    "mode": mode,
-                    "extract_mode": extract_mode,
-                },
-            )
-            return result
-        except Exception as e:
-            logger.error(f"Failed to get trending topics from TrendRadar: {e}")
-            return {}
-
-    async def health_check(self) -> bool:
-        """
-        Check if TrendRadar MCP server is running
-
-        Returns:
-            True if server is healthy, False otherwise
-        """
-        try:
-            async with httpx.AsyncClient(timeout=5.0) as client:
-                response = await client.get(f"{self.base_url}/mcp")
-                return response.status_code == 200
-        except Exception:
-            return False
-
-
-# ============== Default Client & Mock Fallback ==============
-
-
-_default_client: Optional[TrendRadarClient] = None
-_use_mock: bool = True  # Default to mock mode
-
-
-def get_client(base_url: str = "http://localhost:3333") -> TrendRadarClient:
-    """
-    Get or create default TrendRadar client
-
-    Args:
-        base_url: MCP server base URL
-
-    Returns:
-        TrendRadarClient instance
-    """
-    global _default_client
-    if _default_client is None or _default_client.base_url != base_url:
-        _default_client = TrendRadarClient(base_url=base_url)
-    return _default_client
-
-
-def set_mock_mode(use_mock: bool) -> None:
-    """
-    Set whether to use mock data
-
-    Args:
-        use_mock: True to use mock data, False to use MCP
-    """
-    global _use_mock
-    _use_mock = use_mock
-
-
-def get_mock_news(limit: int = 50) -> list[HotNewsItem]:
-    """
-    Get mock hot news data
-
-    Args:
-        limit: Maximum number of items to return
-
-    Returns:
-        List of mock HotNewsItem
-    """
-    now = datetime.now().isoformat()
-    items = MOCK_HOT_NEWS[:limit]
-
-    return [
-        HotNewsItem(
-            title=item["title"],
-            source=item["source"],
-            url=item.get("url"),
-            heat_score=item["heat_score"],
-            sector=item["sector"],
-            rank=item["rank"],
-            platform_name=item["platform_name"],
-            hot_tag=item["hot_tag"],
-            timestamp=now,
-        )
-        for item in items
-    ]
-
-
-def get_hot_news(
-    platforms: Optional[list[str]] = None,
-    limit: int = 50,
-    use_mcp: bool = False,
-) -> list[HotNewsItem]:
-    """
-    Get hot news - synchronous version with mock fallback
-
-    This is the main entry point for the Screener node.
-    By default returns mock data for development/testing.
-    Set use_mcp=True to connect to real TrendRadar MCP server.
-
-    Args:
-        platforms: Optional platform filter (e.g., ['zhihu', 'weibo', 'toutiao'])
-        limit: Maximum number of news items (default 50)
-        use_mcp: Whether to use MCP server (default False, uses mock)
-
-    Returns:
-        List of HotNewsItem, each containing:
-        - title: News title
-        - source: Platform ID (e.g., 'zhihu')
-        - heat_score: Heat/popularity score
-        - sector: Related sector/topic
-        - url: News URL (optional)
-        - rank: Ranking position
-        - timestamp: Fetch timestamp
-
-    Example:
-        >>> news = get_hot_news(limit=10)
-        >>> print(len(news))
-        10
-        >>> print(news[0].title)
-        'AI芯片需求激增，英伟达股价创历史新高'
-    """
-    if _use_mock and not use_mcp:
-        # Return mock data
-        return get_mock_news(limit)
-
-    # Try to use MCP server
-    try:
-        import asyncio
-
-        try:
-            loop = asyncio.get_running_loop()
-            # If there's already a running loop, use ThreadPoolExecutor
-            import concurrent.futures
-
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                future = executor.submit(
-                    asyncio.run,
-                    _get_hot_news_async(platforms=platforms, limit=limit),
-                )
-                return future.result()
-        except RuntimeError:
-            # No running loop, use asyncio.run directly
-            return asyncio.run(_get_hot_news_async(platforms=platforms, limit=limit))
-    except Exception as e:
-        logger.warning(f"MCP call failed, falling back to mock: {e}")
-        return get_mock_news(limit)
-
-
-async def _get_hot_news_async(
-    platforms: Optional[list[str]] = None,
-    limit: int = 50,
-) -> list[HotNewsItem]:
-    """
-    Async implementation for MCP hot news fetch
-
-    Args:
-        platforms: Platform filter
-        limit: Maximum items
-
-    Returns:
-        List of HotNewsItem
-    """
-    client = get_client()
-
-    # Check MCP health first
-    if not await client.health_check():
-        logger.warning("TrendRadar MCP server not available, using mock data")
-        return get_mock_news(limit)
-
-    return await client.get_latest_news(platforms=platforms, limit=limit)
-
-
-# Keep async version for backward compatibility
-async def get_hot_news_async(
-    platforms: Optional[list[str]] = None,
-    limit: int = 50,
-) -> list[HotNewsItem]:
-    """
-    Async version of get_hot_news
-
-    Args:
-        platforms: Optional platform filter
-        limit: Maximum number of news items
-
-    Returns:
-        List of HotNewsItem
-    """
-    if _use_mock:
-        return get_mock_news(limit)
-    return await _get_hot_news_async(platforms=platforms, limit=limit)
-
-
-# Backward compatibility alias
-get_hot_news_sync = get_hot_news
+    def _get_stock_name(self, code: str) -> str:
+        """获取股票名称"""
+        # 简化实现
+        stock_names = {
+            "600036": "招商银行",
+            "300750": "宁德时代",
+            "000858": "五粮液",
+            "600519": "贵州茅台",
+            "002371": "北方华创",
+            "603501": "韦尔股份",
+            "002594": "比亚迪",
+            "601012": "隆基绿能",
+            "300760": "迈瑞医疗",
+            "000977": "浪潮信息",
+            "002230": "科大讯飞",
+        }
+        return stock_names.get(code, code)
