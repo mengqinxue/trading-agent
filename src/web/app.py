@@ -1,6 +1,5 @@
 """FastAPI Web 应用"""
 
-import csv
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
@@ -32,17 +31,13 @@ app.include_router(catalog.router, prefix="/api/catalog", tags=["catalog"])
 
 @app.get("/api/stocks/{code}/name")
 async def get_stock_name(code: str):
-    """获取股票名称"""
-    stock_list_file = Path("data/CN_A/stock_list.csv")
+    """获取股票名称 - 使用 DataAdapter 统一接口"""
+    from src.data_sources.data_adapter import get_adapter
 
-    if stock_list_file.exists():
-        with open(stock_list_file, "r", encoding="utf-8") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                if row["code"] == code:
-                    return {"code": code, "name": row["name"]}
+    adapter = get_adapter()
+    name = adapter.get_stock_info(code).get("name", "未知")
 
-    return {"code": code, "name": "未知"}
+    return {"code": code, "name": name}
 
 static_dir = Path(__file__).parent / "static"
 if static_dir.exists():

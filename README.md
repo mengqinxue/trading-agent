@@ -964,6 +964,14 @@ MIT License
 
 ## 更新日志
 
+### v0.3.1 (2026-05-04)
+
+- **修复 StubConfig 兼容性**: 添加基本面 pipeline 属性
+- **修复缓存问题**: 添加 `DataAdapter.clear_cache()` 方法
+- **架构文档更新**: 新增完整 ARCHITECTURE.md v3.0
+- **简化代码**: Web API 使用 DataAdapter 统一接口
+- **架构图**: 详细的 Workflow 流程图和函数列表
+
 ### v0.3.0 (2026-05-04)
 
 - **新增 AI 智能查询**：自然语言查询本地股票数据
