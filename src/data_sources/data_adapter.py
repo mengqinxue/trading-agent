@@ -4,10 +4,13 @@
 便于在 agents 和 workflows 中替换使用。
 """
 
+import logging
 from typing import Optional, Dict, Any, List
 
 from .providers.base import DataFetcherManager
 from .providers.realtime_types import UnifiedRealtimeQuote, ChipDistribution
+
+logger = logging.getLogger(__name__)
 
 
 class DataAdapter:
@@ -36,8 +39,29 @@ class DataAdapter:
 
     @classmethod
     def reset_manager(cls) -> None:
-        """重置 manager（用于测试）"""
+        """重置 manager（用于测试或清除缓存）"""
         cls._manager = None
+
+    @classmethod
+    def clear_cache(cls) -> None:
+        """清除所有缓存（实时行情、股票名称等）"""
+        from .providers.akshare_fetcher import clear_realtime_cache
+        from .providers.realtime_types import get_realtime_circuit_breaker
+
+        # 清除实时行情缓存
+        clear_realtime_cache()
+
+        # 清除熔断器状态
+        circuit_breaker = get_realtime_circuit_breaker()
+        if hasattr(circuit_breaker, '_states'):
+            circuit_breaker._states.clear()
+
+        # 清除 manager 的股票名称缓存
+        if cls._manager is not None:
+            if hasattr(cls._manager, '_stock_name_cache'):
+                cls._manager._stock_name_cache.clear()
+
+        logger.info("[DataAdapter] 缓存已清除")
 
     # === 市场数据 ===
 

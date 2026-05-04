@@ -304,6 +304,10 @@ def run_stock_analysis_with_logging(
     log_folder: Path = None
 ) -> dict:
     """运行股票分析（带日志记录）"""
+    # 清除缓存，确保获取最新数据
+    from src.data_sources.data_adapter import DataAdapter
+    DataAdapter.clear_cache()
+
     write_log(log_folder, f"初始化 Stock Analysis Workflow: {stock_code}")
 
     workflow = create_stock_analysis_workflow(log_folder)
@@ -339,6 +343,10 @@ def run_stock_analysis_with_logging(
 
 def run_stock_analysis(stock_code: str, current_position: float = 0) -> dict:
     """运行股票分析（无日志记录，兼容旧接口）"""
+    # 清除缓存，确保获取最新数据
+    from src.data_sources.data_adapter import DataAdapter
+    DataAdapter.clear_cache()
+
     workflow = create_stock_analysis_workflow()
 
     initial_state = {

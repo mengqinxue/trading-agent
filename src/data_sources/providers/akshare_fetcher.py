@@ -114,6 +114,16 @@ _etf_realtime_cache: Dict[str, Any] = {
 }
 
 
+def clear_realtime_cache() -> None:
+    """清除实时行情缓存（用于重新获取数据）"""
+    global _realtime_cache, _etf_realtime_cache
+    _realtime_cache['data'] = None
+    _realtime_cache['timestamp'] = 0
+    _etf_realtime_cache['data'] = None
+    _etf_realtime_cache['timestamp'] = 0
+    logger.info("[缓存清除] A股/ETF 实时行情缓存已清除")
+
+
 def _is_etf_code(stock_code: str) -> bool:
     """
     判断代码是否为 ETF 基金
