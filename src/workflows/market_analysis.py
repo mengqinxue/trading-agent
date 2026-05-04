@@ -1,55 +1,100 @@
-"""市场分析 Workflow - 带日志记录"""
+"""市场分析 Workflow - 使用策略模块进行牛熊判断"""
 
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Dict, Any
 
 from langgraph.graph import StateGraph, END
 
 from src.workflows.state import MarketAnalysisState
-from src.agents.market.macro_analyzer import MarketMacroAnalyzer
 from src.agents.market.sector_analyzer import SectorAnalyzer
 from src.agents.market.industry_analyzer import IndustryAnalyzer
 from src.agents.market.stock_screener import StockScreener
 from src.core.llm import get_llm
 from src.core.logger import logger
-from src.data_sources.data_adapter import get_adapter
+from src.data_sources import load_index_daily
 from src.scheduler.workspace_manager import write_log
+
+# 策略模块
+from strategies import MarketTrendStrategy, BullBearCycleDetector
 
 
 def create_market_analysis_workflow(log_folder: Optional[Path] = None):
     """创建市场分析 workflow"""
 
     llm = get_llm()
-    data_adapter = get_adapter()  # 使用多数据源适配器
 
-    macro_analyzer = MarketMacroAnalyzer(llm)
+    # 策略实例
+    trend_strategy = MarketTrendStrategy()
+    cycle_detector = BullBearCycleDetector()
+
     sector_analyzer = SectorAnalyzer(llm)
     industry_analyzer = IndustryAnalyzer(llm)
     stock_screener = StockScreener(llm)
 
     def macro_node(state: MarketAnalysisState) -> dict:
-        """宏观分析节点"""
+        """宏观分析节点 - 使用策略模块判断牛熊"""
         if log_folder:
             write_log(log_folder, "=== Node: 宏观分析 [开始] ===")
 
         logger.info("执行宏观分析...")
 
-        market_data = data_adapter.get_market_overview()
+        # 加载上证指数历史数据
+        df = load_index_daily("000001")
+
+        if df is None or df.empty:
+            logger.warning("[宏观分析] 无法加载上证指数数据")
+            if log_folder:
+                write_log(log_folder, "无法加载上证指数数据，使用默认判断")
+
+            return {
+                "market_sentiment": "震荡市",
+                "sentiment_confidence": 0.5,
+                "market_trend_detail": {"status": "unknown"},
+                "bull_bear_cycles": [],
+                "logs": state.get("logs", []) + ["宏观分析完成（数据缺失）"],
+                "current_step": "sector"
+            }
+
+        # 使用 MarketTrendStrategy 判断当前市场状态
+        trend_result = trend_strategy.analyze(df)
+        market_sentiment = trend_result.get("status", "震荡市")
+        confidence = trend_result.get("confidence", 0.5)
+
+        logger.info(f"[宏观分析] 当前市场状态: {market_sentiment}, 置信度: {confidence:.2f}")
+        logger.info(f"[宏观分析] 趋势强度: {trend_result.get('trend_strength', 0)}")
+
+        for signal in trend_result.get("signals", []):
+            logger.info(f"[宏观分析] 信号: {signal}")
 
         if log_folder:
-            write_log(log_folder, f"获取市场数据: {list(market_data.keys())}")
+            write_log(log_folder, f"市场状态: {market_sentiment}")
+            write_log(log_folder, f"置信度: {confidence:.2f}")
+            write_log(log_folder, f"趋势强度: {trend_result.get('trend_strength', 0)}")
+            for signal in trend_result.get("signals", []):
+                write_log(log_folder, f"  - {signal}")
 
-        result = macro_analyzer.run({"market_data": market_data})
+        # 可选：检测历史牛熊周期（用于参考）
+        cycles = []
+        try:
+            cycles = cycle_detector.detect_cycles(df)
+            cycle_summary = cycle_detector.get_cycle_summary(cycles)
+            logger.info(f"[宏观分析] 历史周期数: {len(cycles)}")
 
-        sentiment = result.get("market_sentiment", "震荡市")
-        logger.info(f"宏观分析结果: {sentiment}")
+            if log_folder:
+                write_log(log_folder, f"历史周期数: {len(cycles)}")
+                write_log(log_folder, f"牛市周期: {cycle_summary.get('bull_count', 0)} 个")
+                write_log(log_folder, f"熊市周期: {cycle_summary.get('bear_count', 0)} 个")
+        except Exception as e:
+            logger.warning(f"[宏观分析] 周期检测失败: {e}")
 
         if log_folder:
-            write_log(log_folder, f"分析结果: 市场形势={sentiment}, 置信度={result.get('confidence', 0)}")
             write_log(log_folder, "=== Node: 宏观分析 [结束] ===")
 
         return {
-            "market_sentiment": sentiment,
+            "market_sentiment": market_sentiment,
+            "sentiment_confidence": confidence,
+            "market_trend_detail": trend_result,
+            "bull_bear_cycles": cycles,
             "logs": state.get("logs", []) + ["宏观分析完成"],
             "current_step": "sector"
         }
@@ -61,7 +106,14 @@ def create_market_analysis_workflow(log_folder: Optional[Path] = None):
 
         logger.info("执行板块分析...")
 
-        sector_data = data_adapter.get_hot_sectors(top_n=10)
+        # 使用策略模块获取板块数据
+        from src.data_sources import get_hot_sectors
+
+        try:
+            sector_data = get_hot_sectors(top_n=10)
+        except Exception as e:
+            logger.warning(f"[板块分析] 获取板块数据失败: {e}")
+            sector_data = []
 
         if log_folder:
             write_log(log_folder, f"获取板块数据: {len(sector_data)} 个板块")
@@ -163,6 +215,9 @@ def run_market_analysis_with_logging(log_folder: Path) -> dict:
     initial_state = {
         "messages": [],
         "market_sentiment": "",
+        "sentiment_confidence": 0.0,
+        "market_trend_detail": {},
+        "bull_bear_cycles": [],
         "hot_sectors": [],
         "industries": [],
         "recommended_stocks": [],
@@ -181,6 +236,9 @@ def run_market_analysis() -> dict:
     initial_state = {
         "messages": [],
         "market_sentiment": "",
+        "sentiment_confidence": 0.0,
+        "market_trend_detail": {},
+        "bull_bear_cycles": [],
         "hot_sectors": [],
         "industries": [],
         "recommended_stocks": [],

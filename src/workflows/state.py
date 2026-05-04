@@ -9,6 +9,8 @@ class MarketAnalysisState(TypedDict):
     messages: Annotated[list, add_messages]
     market_sentiment: str  # 牛市/熊市/震荡市
     sentiment_confidence: float  # 置信度
+    market_trend_detail: dict  # 详细趋势分析结果
+    bull_bear_cycles: list[dict]  # 历史牛熊周期列表
     hot_sectors: list[dict]  # 热点板块
     industries: list[dict]  # 行业分析
     recommended_stocks: list[dict]  # 推荐个股
@@ -58,4 +60,38 @@ class StockAnalysisState(TypedDict):
 
     # 元数据
     logs: list[str]  # 日志
+    error: Optional[str]  # 错误信息
+
+
+class BacktestState(TypedDict):
+    """回测 workflow 状态（4 节点）"""
+    messages: Annotated[list, add_messages]
+
+    # Init Node - 解析用户需求
+    description: str  # 用户策略描述
+    params: dict  # 回测参数 (start_date, end_date, initial_capital等)
+    strategy_params: dict  # 解析后的策略参数
+
+    # Backtest Node - 执行回测
+    strategy_code: str  # 生成的策略代码
+    trades: list[dict]  # 交易记录
+    equity_curve: list[dict]  # 净值曲线
+    summary: dict  # 回测摘要 (total_return, win_rate等)
+
+    # Reflection Node - Advisor评估
+    reflection: dict  # AI反思结果
+    strengths: list[str]  # 策略优势
+    weaknesses: list[str]  # 策略劣势
+    improvements: list[str]  # 改进建议
+    risk_warnings: list[str]  # 风险提示
+
+    # Report Node - 生成报告
+    monthly_settlements: list[dict]  # 月度结算
+    strategy_log: str  # markdown日志内容
+    strategy_log_path: str  # 日志文件路径
+
+    # 元数据
+    task_id: str  # 任务ID
+    current_step: str  # 当前步骤
+    logs: list[str]  # 执行日志
     error: Optional[str]  # 错误信息

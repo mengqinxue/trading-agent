@@ -10,6 +10,11 @@
     - status.json
     - logs.txt
     - result.json
+  - bt_20260503_123456_ghi89012/    # 回测任务
+    - status.json                  # 任务状态 + 策略参数
+    - logs.txt                     # 执行日志
+    - strategy_log.md              # 策略详细日志
+    - result.json                  # 回测结果
 
 状态定义：
 - pending: 待执行（只有 status.json）
@@ -25,20 +30,24 @@ from typing import Optional
 from uuid import uuid4
 
 # 项目根目录下的 workspace
-WORKSPACE_DIR = Path(__file__).parent.parent.parent.parent / "workspace"
+WORKSPACE_DIR = Path(__file__).parent.parent.parent / "workspace"
 
 
 def create_task_folder(
     task_type: str,
     task_id: str,
-    stocks: Optional[list[dict]] = None
+    stocks: Optional[list[dict]] = None,
+    description: Optional[str] = None,
+    params: Optional[dict] = None
 ) -> Path:
     """创建任务文件夹并初始化 status.json
 
     Args:
-        task_type: market_analysis / stock_analysis
+        task_type: market_analysis / stock_analysis / backtest
         task_id: 任务 ID
         stocks: 股票列表 [{code, position}]
+        description: 回测策略描述（仅 backtest 类型）
+        params: 回测参数（仅 backtest 类型）
 
     Returns:
         任务文件夹路径
@@ -46,8 +55,16 @@ def create_task_folder(
     # 确保目录存在
     WORKSPACE_DIR.mkdir(parents=True, exist_ok=True)
 
-    # 生成文件夹名称
-    prefix = "ma" if task_type == "market_analysis" else "stock"
+    # 生成文件夹名称（根据任务类型）
+    if task_type == "market_analysis":
+        prefix = "ma"
+    elif task_type == "stock_analysis":
+        prefix = "stock"
+    elif task_type == "backtest":
+        prefix = "bt"
+    else:
+        prefix = "task"
+
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     short_id = task_id[:8]
 
@@ -70,7 +87,9 @@ def create_task_folder(
         "started_at": None,
         "completed_at": None,
         "stocks": stocks,
-        "workflow_steps": []
+        "workflow_steps": [],
+        "description": description,
+        "params": params
     }
     write_status(folder_path, status_data)
 
@@ -234,7 +253,7 @@ def list_all_tasks() -> list[dict]:
     """列出所有任务及其状态
 
     Returns:
-        任务列表 [{folder_name, task_id, task_type, status, created_at, stocks}]
+        任务列表 [{folder_name, task_id, task_type, status, created_at, stocks, description, params}]
     """
     folders = list_task_folders()
     tasks = []
@@ -249,13 +268,23 @@ def list_all_tasks() -> list[dict]:
                 "task_type": status_data.get("task_type", ""),
                 "status": get_task_status(folder),
                 "created_at": status_data.get("created_at"),
-                "stocks": status_data.get("stocks")
+                "stocks": status_data.get("stocks"),
+                "description": status_data.get("description"),
+                "params": status_data.get("params")
             })
         else:
             # 无 status.json，从文件夹名推断
             folder_name = folder.name
             parts = folder_name.split("_")
-            task_type = "market_analysis" if parts[0] == "ma" else "stock_analysis"
+            prefix = parts[0]
+            if prefix == "ma":
+                task_type = "market_analysis"
+            elif prefix == "stock":
+                task_type = "stock_analysis"
+            elif prefix == "bt":
+                task_type = "backtest"
+            else:
+                task_type = "unknown"
             tasks.append({
                 "folder_name": folder_name,
                 "folder_path": str(folder),
@@ -263,7 +292,9 @@ def list_all_tasks() -> list[dict]:
                 "task_type": task_type,
                 "status": get_task_status(folder),
                 "created_at": None,
-                "stocks": None
+                "stocks": None,
+                "description": None,
+                "params": None
             })
 
     return tasks
@@ -317,7 +348,9 @@ def get_task_detail(folder_path: Path) -> dict:
         "workflow_steps": status_data.get("workflow_steps", []),
         "summary": summary,
         "result": result,
-        "logs": logs
+        "logs": logs,
+        "description": status_data.get("description"),
+        "params": status_data.get("params")
     }
 
 

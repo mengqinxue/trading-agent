@@ -501,6 +501,218 @@ def cli_update_index(args):
         print("请指定 --all 或 --code")
 
 
+def cli_backtest(args):
+    """自然语言回测命令"""
+    from src.backtest import BacktestRunner
+
+    print("=" * 70)
+    print("自然语言回测")
+    print("=" * 70)
+
+
+def cli_stock_info(args):
+    """股票信息查询"""
+    from src.data.collectors.stock_info_collector import StockInfoCollector
+    from pathlib import Path
+
+    collector = StockInfoCollector()
+    code = args.code
+
+    # 检查是否已有缓存数据
+    stock_dir = Path(f"data/stock_info/{code}")
+    cache_file = stock_dir / "full_info.json"
+
+    use_cache = cache_file.exists() and not args.refresh
+
+    if use_cache:
+        print("=" * 70)
+        print(f"股票信息（缓存）")
+        print("=" * 70)
+        print(f"股票代码: {code}\n")
+
+        data = collector.load(code)
+        if not data:
+            print("缓存数据损坏，重新获取...")
+            use_cache = False
+
+    if not use_cache:
+        print("=" * 70)
+        print(f"股票信息（实时获取）")
+        print("=" * 70)
+        print(f"股票代码: {code}")
+        print(f"查询范围: {args.days} 天\n")
+
+        data = collector.collect_all(code, days=args.days)
+        collector.save(code, data)
+
+    # 打印基本信息
+    basic = data.get("basic", {})
+    print("【基本信息】")
+    print(f"  名称: {basic.get('name', 'N/A')}")
+    print(f"  行业: {basic.get('industry', 'N/A')}")
+    market_cap = basic.get('market_cap', 0)
+    if market_cap:
+        print(f"  市值: {market_cap/1e8:.1f} 亿元")
+
+    # 打印实时行情
+    market = data.get("market", {})
+    realtime = market.get("realtime", {})
+    if realtime:
+        print("\n【实时行情】")
+        price = realtime.get('price', 0)
+        change = realtime.get('change_pct', 0)
+        print(f"  最新价: {price:.2f} 元")
+        print(f"  涨跌幅: {change:.2f}%")
+        if realtime.get('high'):
+            print(f"  最高: {realtime.get('high', 0):.2f}")
+        if realtime.get('low'):
+            print(f" 最低: {realtime.get('low', 0):.2f}")
+        if realtime.get('volume'):
+            vol = realtime.get('volume', 0)
+            print(f"  成交量: {vol/1e4:.0f} 万手")
+
+    # 打印估值数据
+    financial = data.get("financial", {})
+    valuation = financial.get("valuation", {})
+    indicators = financial.get("indicators", {})
+
+    # 如果 valuation 有数据，优先使用
+    if valuation and valuation.get("pe_ttm"):
+        print("\n【估值数据】")
+        print(f"  PE(TTM): {valuation.get('pe_ttm', 0):.2f}")
+        print(f"  PB: {valuation.get('pb', 0):.2f}")
+        print(f"  PS(TTM): {valuation.get('ps_ttm', 0):.2f}")
+        print(f"  股息率: {valuation.get('dv_ratio', 0):.2f}%")
+    # 否则检查 indicators 是否有估值数据
+    elif indicators and indicators.get("pe_ttm"):
+        print("\n【估值数据】")
+        pe = indicators.get('pe_ttm')
+        if pe and pe > 0:
+            print(f"  PE(TTM): {pe:.2f}")
+        pb = indicators.get('pb')
+        if pb and pb > 0:
+            print(f"  PB: {pb:.2f}")
+        ps = indicators.get('ps_ttm')
+        if ps and ps > 0:
+            print(f"  PS(TTM): {ps:.2f}")
+        dv = indicators.get('dividend_ratio')
+        if dv and dv > 0:
+            print(f"  股息率: {dv:.2f}%")
+
+    # 财务指标（ROE、毛利率等）
+    if indicators:
+        roe = indicators.get('roe', 0)
+        gross_margin = indicators.get('gross_profit_margin', 0)
+        net_margin = indicators.get('net_profit_margin', 0)
+        if roe or gross_margin or net_margin:
+            print("\n【财务指标】")
+            if roe:
+                print(f"  ROE: {roe:.2f}%")
+            if gross_margin:
+                print(f"  毛利率: {gross_margin:.2f}%")
+            if net_margin:
+                print(f"  净利率: {net_margin:.2f}%")
+
+    # 打印近期新闻
+    news = data.get("news", {})
+    if news and news.get("count", 0) > 0:
+        print("\n【近期新闻】")
+        print(f"  共 {news.get('count', 0)} 条新闻")
+        latest = news.get("latest", [])
+        for i, item in enumerate(latest[:5], 1):
+            title = item.get('title', '')
+            # 截断过长的标题
+            if len(title) > 50:
+                title = title[:50] + "..."
+            print(f"  {i}. {title}")
+            print(f"     时间: {item.get('publish_time', 'N/A')}")
+
+    # 打印板块归属
+    sectors = data.get("sectors", [])
+    if sectors:
+        print("\n【板块归属】")
+        sector_names = [s.get('name', '') for s in sectors[:5]]
+        print(f"  {', '.join(sector_names)}")
+
+    # 打印更新时间
+    print(f"\n【数据时间】")
+    print(f"  收集时间: {data.get('collect_time', 'N/A')}")
+    print(f"  数据范围: {data.get('data_range_days', 0)} 天")
+
+    # 保存输出
+    if args.output:
+        with open(args.output, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        print(f"\n完整数据已保存到: {args.output}")
+
+    print("=" * 70)
+
+
+def cli_backtest(args):
+    """自然语言回测命令"""
+    from src.backtest import BacktestRunner
+
+    print("=" * 70)
+    print("自然语言回测")
+    print("=" * 70)
+
+    runner = BacktestRunner()
+
+    # 列出已生成的策略
+    if args.list:
+        strategies = runner.list_saved_strategies()
+        print(f"\n已保存的策略: {len(strategies)} 个\n")
+        for s in strategies:
+            print(f"  - {s}")
+        return
+
+    # 使用已保存的策略
+    if args.strategy:
+        print(f"\n使用策略: {args.strategy}")
+        result = runner.run_from_saved_strategy(
+            strategy_name=args.strategy,
+            start_date=args.start,
+            end_date=args.end,
+            initial_capital=args.capital,
+        )
+    else:
+        # 自然语言描述
+        if not args.description:
+            print("请提供策略描述或使用 --strategy 指定已保存的策略")
+            print("示例: trading-agent backtest \"涨停板策略，止盈8%，止损3%\"")
+            sys.exit(1)
+
+        print(f"\n策略描述: {args.description}")
+        result = runner.run_from_description(
+            description=args.description,
+            start_date=args.start,
+            end_date=args.end,
+            initial_capital=args.capital,
+            save_strategy_code=args.save,
+        )
+
+    # 显示结果
+    if result.get("success"):
+        summary = result.get("summary", {})
+        print("\n" + "=" * 70)
+        print("回测结果")
+        print("=" * 70)
+        print(f"总收益率: {summary.get('total_return', 0):.2f}%")
+        print(f"年化收益: {summary.get('annual_return', 0):.2f}%")
+        print(f"最大回撤: {summary.get('max_drawdown', 0):.2f}%")
+        print(f"胜率: {summary.get('win_rate', 0):.2f}%")
+        print(f"总交易次数: {summary.get('total_trades', 0)}")
+
+        if args.output:
+            import json
+            with open(args.output, "w", encoding="utf-8") as f:
+                json.dump(result, f, ensure_ascii=False, indent=2)
+            print(f"\n结果已保存到: {args.output}")
+    else:
+        print(f"\n回测失败: {result.get('error', '未知错误')}")
+        sys.exit(1)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Trading Agent - A股交易辅助系统",
@@ -521,6 +733,11 @@ def main():
 
   # 查询模板列表
   trading-agent templates
+
+  # 股票信息查询
+  trading-agent info 603629
+  trading-agent info 603773 --days 30 --refresh
+  trading-agent info 000001 -o stock_data.json
 
   # 市场趋势分析（判断牛熊市）
   trading-agent trend
@@ -553,6 +770,16 @@ def main():
   # 更新指数日线数据
   trading-agent update-index --all
   trading-agent update-index --code 000001 --days 250
+
+  # 自然语言回测
+  trading-agent backtest "涨停板追涨策略，止盈8%，止损3%，非熊市参与"
+  trading-agent backtest "..." --start 2020-01-01 --capital 100000 --save
+
+  # 使用已保存的策略
+  trading-agent backtest --strategy limit_up_strategy
+
+  # 列出已保存的策略
+  trading-agent backtest --list
         """
     )
 
@@ -629,6 +856,26 @@ def main():
     idx_parser.add_argument('--days', type=int, default=120, help='获取天数（仅当 --recent 时有效）')
     idx_parser.add_argument('--recent', action='store_true', help='只获取最近数据（默认获取全部历史）')
     idx_parser.set_defaults(func=cli_update_index)
+
+    # 回测命令
+    backtest_parser = subparsers.add_parser('backtest', help='自然语言回测策略')
+    backtest_parser.add_argument('description', nargs='?', help='自然语言策略描述')
+    backtest_parser.add_argument('--strategy', help='使用已保存的策略名称')
+    backtest_parser.add_argument('--start', default='2020-01-01', help='开始日期')
+    backtest_parser.add_argument('--end', help='结束日期（默认今天）')
+    backtest_parser.add_argument('--capital', type=float, default=100000, help='初始资金')
+    backtest_parser.add_argument('--save', action='store_true', help='保存生成的策略代码')
+    backtest_parser.add_argument('--list', action='store_true', help='列出已保存的策略')
+    backtest_parser.add_argument('-o', '--output', help='保存结果到文件 (JSON)')
+    backtest_parser.set_defaults(func=cli_backtest)
+
+    # 股票信息查询命令
+    info_parser = subparsers.add_parser('info', help='股票信息查询')
+    info_parser.add_argument('code', help='股票代码（如 603629）')
+    info_parser.add_argument('--days', type=int, default=90, help='查询天数（默认90天）')
+    info_parser.add_argument('--refresh', action='store_true', help='强制重新获取（忽略缓存）')
+    info_parser.add_argument('-o', '--output', help='保存完整数据到文件 (JSON)')
+    info_parser.set_defaults(func=cli_stock_info)
 
     args = parser.parse_args()
 

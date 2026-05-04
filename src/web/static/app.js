@@ -8,12 +8,14 @@ let stockList = [];
 // DOM 元素
 const btnMarketAnalysis = document.getElementById('btn-market-analysis');
 const btnStockAnalysis = document.getElementById('btn-stock-analysis');
+const btnBacktest = document.getElementById('btn-backtest');
 const btnChatQuery = document.getElementById('btn-chat-query');
 const btnDataCatalog = document.getElementById('btn-data-catalog');
 const btnViewTasks = document.getElementById('btn-view-tasks');
 const btnWorkflowDoc = document.getElementById('btn-workflow-doc');
 const panelMarketAnalysis = document.getElementById('panel-market-analysis');
 const panelStockAnalysis = document.getElementById('panel-stock-analysis');
+const panelBacktest = document.getElementById('panel-backtest');
 const panelTasks = document.getElementById('panel-tasks');
 const panelTaskDetail = document.getElementById('panel-task-detail');
 const panelWorkflowDoc = document.getElementById('panel-workflow-doc');
@@ -28,11 +30,11 @@ const stockNameCache = {};
 
 // 显示面板
 function showPanel(panelId) {
-    const panels = [panelMarketAnalysis, panelStockAnalysis, panelTasks, panelTaskDetail, panelWorkflowDoc];
+    const panels = [panelMarketAnalysis, panelStockAnalysis, panelBacktest, panelTasks, panelTaskDetail, panelWorkflowDoc];
     panels.forEach(p => p.classList.add('hidden'));
     document.getElementById(panelId).classList.remove('hidden');
 
-    const buttons = [btnMarketAnalysis, btnStockAnalysis, btnChatQuery, btnDataCatalog, btnViewTasks, btnWorkflowDoc];
+    const buttons = [btnMarketAnalysis, btnStockAnalysis, btnBacktest, btnChatQuery, btnDataCatalog, btnViewTasks, btnWorkflowDoc];
     buttons.forEach(b => b.classList.remove('active'));
 }
 
@@ -75,6 +77,106 @@ btnWorkflowDoc.addEventListener('click', () => {
     showPanel('panel-workflow-doc');
     btnWorkflowDoc.classList.add('active');
 });
+
+// 回测面板
+btnBacktest.addEventListener('click', () => {
+    showPanel('panel-backtest');
+    btnBacktest.classList.add('active');
+    initBacktestPanel();
+});
+
+// 初始化回测面板
+function initBacktestPanel() {
+    // 设置结束日期为今天
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('end-date').value = today;
+}
+
+// 创建回测任务
+document.getElementById('btn-create-backtest-task').addEventListener('click', async () => {
+    const description = document.getElementById('strategy-description').value.trim();
+    const startDate = document.getElementById('start-date').value;
+    const endDate = document.getElementById('end-date').value;
+    const initialCapital = parseFloat(document.getElementById('initial-capital').value) || 100000;
+    const maxPositions = parseInt(document.getElementById('max-positions').value) || 5;
+    const buyFrequency = document.getElementById('buy-frequency').value;
+    const buyLimit = parseInt(document.getElementById('buy-limit').value) || 3;
+    const buyRatio = parseFloat(document.getElementById('buy-ratio').value) || 0.1;
+    const profitTarget = parseFloat(document.getElementById('profit-target').value) || 8;
+    const stopLoss = parseFloat(document.getElementById('stop-loss').value) || -3;
+    const marketFilter = document.getElementById('market-filter').value;
+    const excludeSt = document.getElementById('exclude-st').checked;
+    const excludeNew = document.getElementById('exclude-new').checked;
+
+    if (!description) {
+        showBacktestStatus('请输入策略描述', 'error');
+        return;
+    }
+
+    if (!startDate || !endDate) {
+        showBacktestStatus('请选择起始和结束日期', 'error');
+        return;
+    }
+
+    showBacktestStatus('正在创建回测任务...', '');
+
+    try {
+        const response = await fetch(API_BASE, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                task_type: 'backtest',
+                description: description,
+                params: {
+                    start_date: startDate,
+                    end_date: endDate,
+                    initial_capital: initialCapital,
+                    max_positions: maxPositions,
+                    buy_frequency: buyFrequency,
+                    buy_limit: buyLimit,
+                    buy_ratio: buyRatio,
+                    profit_target: profitTarget,
+                    stop_loss: stopLoss,
+                    market_filter: marketFilter,
+                    exclude_st: excludeSt,
+                    exclude_new: excludeNew,
+                    min_list_days: 60
+                }
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error('创建任务失败');
+        }
+
+        const data = await response.json();
+        showBacktestStatus(`回测任务已创建，任务ID: ${data.task_id.slice(0, 8)}`, 'success');
+
+        // 清空表单
+        document.getElementById('strategy-description').value = '';
+
+        // 3秒后跳转到任务列表
+        setTimeout(() => {
+            btnViewTasks.click();
+        }, 3000);
+
+    } catch (error) {
+        showBacktestStatus(`创建失败: ${error.message}`, 'error');
+    }
+});
+
+// 显示回测状态
+function showBacktestStatus(message, type) {
+    const statusDiv = document.getElementById('backtest-status');
+    const messageDiv = statusDiv.querySelector('.status-message');
+
+    statusDiv.classList.remove('hidden', 'success', 'error');
+    if (type) {
+        statusDiv.classList.add(type);
+    }
+
+    messageDiv.textContent = message;
+}
 
 // 智能查询跳转
 btnChatQuery.addEventListener('click', () => {

@@ -16,6 +16,7 @@
         <nav>
             <button id="btn-market-analysis">市场分析</button>
             <button id="btn-stock-analysis">股票分析</button>
+            <button id="btn-backtest">策略回测</button>
             <button id="btn-chat-query">智能查询</button>
             <button id="btn-data-catalog">数据词典</button>
             <button id="btn-view-tasks">查看任务</button>
@@ -78,6 +79,109 @@
                         </tbody>
                     </table>
                     <p id="stock-count">共 0 只股票待分析</p>
+                </div>
+            </div>
+
+            <!-- 策略回测面板 -->
+            <div id="panel-backtest" class="panel hidden">
+                <h2>策略回测</h2>
+                <p>使用自然语言描述交易策略，系统自动生成代码并执行回测分析。</p>
+
+                <!-- 自然语言输入 -->
+                <div class="form-group">
+                    <label for="strategy-description">策略描述：</label>
+                    <textarea id="strategy-description" rows="3"
+                        placeholder="如：涨停板追涨策略，第二天开盘买入，止盈8%，止损3%，熊市不参与"></textarea>
+                    <small>用自然语言描述你的交易策略，系统会解析并生成代码</small>
+                </div>
+
+                <!-- 固定参数配置 -->
+                <div class="params-section">
+                    <h3>回测参数</h3>
+
+                    <div class="param-row">
+                        <div class="param-item">
+                            <label>起始日期：</label>
+                            <input type="date" id="start-date" value="2020-01-01">
+                        </div>
+                        <div class="param-item">
+                            <label>结束日期：</label>
+                            <input type="date" id="end-date">
+                        </div>
+                        <div class="param-item">
+                            <label>初始资金：</label>
+                            <input type="number" id="initial-capital" value="100000">
+                            <small>元</small>
+                        </div>
+                    </div>
+
+                    <div class="param-row">
+                        <div class="param-item">
+                            <label>最大持仓：</label>
+                            <input type="number" id="max-positions" value="5" min="1" max="20">
+                            <small>只</small>
+                        </div>
+                        <div class="param-item">
+                            <label>买入频率：</label>
+                            <select id="buy-frequency">
+                                <option value="daily">每日</option>
+                                <option value="weekly" selected>每周</option>
+                            </select>
+                        </div>
+                        <div class="param-item">
+                            <label>每周期买入限制：</label>
+                            <input type="number" id="buy-limit" value="3" min="1" max="10">
+                            <small>只</small>
+                        </div>
+                    </div>
+
+                    <div class="param-row">
+                        <div class="param-item">
+                            <label>买入比例：</label>
+                            <input type="number" id="buy-ratio" value="0.1" step="0.01" min="0.01" max="1">
+                            <small>每次买入资金比例（如0.1=10%）</small>
+                        </div>
+                        <div class="param-item">
+                            <label>止盈阈值：</label>
+                            <input type="number" id="profit-target" value="8" min="1" max="100">
+                            <small>%</small>
+                        </div>
+                        <div class="param-item">
+                            <label>止损阈值：</label>
+                            <input type="number" id="stop-loss" value="-3" min="-50" max="-1">
+                            <small>%（负数）</small>
+                        </div>
+                    </div>
+
+                    <div class="param-row">
+                        <div class="param-item">
+                            <label>市场过滤：</label>
+                            <select id="market-filter">
+                                <option value="none">无限制</option>
+                                <option value="非熊市" selected>非熊市参与</option>
+                                <option value="牛市">仅牛市</option>
+                            </select>
+                        </div>
+                        <div class="param-item checkbox-item">
+                            <label>
+                                <input type="checkbox" id="exclude-st" checked>
+                                排除ST股
+                            </label>
+                        </div>
+                        <div class="param-item checkbox-item">
+                            <label>
+                                <input type="checkbox" id="exclude-new" checked>
+                                排除次新股（上市<60天）
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <button id="btn-create-backtest-task" class="primary-btn">创建回测任务</button>
+
+                <!-- 任务创建状态 -->
+                <div id="backtest-status" class="hidden">
+                    <div class="status-message"></div>
                 </div>
             </div>
 

@@ -1,7 +1,7 @@
 """任务 API 路由 - 基于 Workspace 文件系统"""
 
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Dict, Any
 
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel
@@ -26,8 +26,10 @@ class StockWithPosition(BaseModel):
 
 class CreateTaskRequest(BaseModel):
     """创建任务请求"""
-    task_type: str  # market_analysis / stock_analysis
+    task_type: str  # market_analysis / stock_analysis / backtest
     stocks: Optional[list[StockWithPosition]] = None  # 每只股票单独持仓
+    description: Optional[str] = None  # 回测策略描述
+    params: Optional[Dict[str, Any]] = None  # 回测参数
 
 
 class TaskResponse(BaseModel):
@@ -39,6 +41,8 @@ class TaskResponse(BaseModel):
     started_at: Optional[str] = None
     completed_at: Optional[str] = None
     stocks: Optional[list[dict]] = None
+    description: Optional[str] = None
+    params: Optional[dict] = None
     folder_name: Optional[str] = None
 
 
@@ -69,7 +73,7 @@ def run_task_background(task_id: str):
 @router.post("", response_model=TaskResponse)
 async def create_task(request: CreateTaskRequest, background_tasks: BackgroundTasks):
     """创建分析任务"""
-    if request.task_type not in ["market_analysis", "stock_analysis"]:
+    if request.task_type not in ["market_analysis", "stock_analysis", "backtest"]:
         raise HTTPException(status_code=400, detail="Invalid task_type")
 
     # 处理股票列表
@@ -81,10 +85,21 @@ async def create_task(request: CreateTaskRequest, background_tasks: BackgroundTa
         else:
             raise HTTPException(status_code=400, detail="stocks is required for stock_analysis")
 
+    # 处理回测参数
+    backtest_params = None
+    backtest_description = None
+    if request.task_type == "backtest":
+        backtest_description = request.description
+        if not backtest_description:
+            raise HTTPException(status_code=400, detail="description is required for backtest")
+        backtest_params = request.params or {}
+
     # 创建任务（会创建文件夹和 status.json）
     task = executor.create_task(
         task_type=request.task_type,
-        stocks=stocks_with_positions
+        stocks=stocks_with_positions,
+        description=backtest_description,
+        params=backtest_params
     )
 
     # 后台执行
@@ -95,7 +110,9 @@ async def create_task(request: CreateTaskRequest, background_tasks: BackgroundTa
         task_type=task.task_type,
         status="pending",
         created_at=task.created_at.isoformat() if task.created_at else None,
-        stocks=stocks_with_positions
+        stocks=stocks_with_positions,
+        description=backtest_description,
+        params=backtest_params
     )
 
 
