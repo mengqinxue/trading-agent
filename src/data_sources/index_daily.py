@@ -32,13 +32,14 @@ MAIN_INDEXES = {
 }
 
 
-def get_index_daily_akshare(code: str, days: int = 120) -> Optional[pd.DataFrame]:
+def get_index_daily_akshare(code: str, full_history: bool = True, days: int = 120) -> Optional[pd.DataFrame]:
     """
     使用 Akshare 获取指数日线数据
 
     Args:
         code: 指数代码（如 000001）
-        days: 获取天数（默认120天，约半年）
+        full_history: 是否获取全部历史数据（默认True，从上市开始）
+        days: 仅当 full_history=False 时有效，获取最近天数
 
     Returns:
         日线数据 DataFrame
@@ -53,14 +54,14 @@ def get_index_daily_akshare(code: str, days: int = 120) -> Optional[pd.DataFrame
             market = 'sz'  # 深圳
 
         full_code = f"{market}{code}"
+        name = MAIN_INDEXES.get(code, {}).get('name', code)
 
-        logger.info(f"[指数日线] 获取 {full_code} 最近 {days} 天数据...")
+        if full_history:
+            logger.info(f"[指数日线] 获取 {full_code} {name} 全部历史数据...")
+        else:
+            logger.info(f"[指数日线] 获取 {full_code} {name} 最近 {days} 天数据...")
 
-        # 计算日期范围
-        end_date = datetime.now().strftime('%Y%m%d')
-        start_date = (datetime.now() - timedelta(days=days*1.5)).strftime('%Y%m%d')
-
-        # Akshare 指数日线接口
+        # Akshare 指数日线接口（返回全部历史）
         df = ak.stock_zh_index_daily(symbol=full_code)
 
         if df is None or df.empty:
@@ -80,18 +81,25 @@ def get_index_daily_akshare(code: str, days: int = 120) -> Optional[pd.DataFrame
         # 确保日期格式
         df['date'] = pd.to_datetime(df['date']).dt.strftime('%Y-%m-%d')
 
-        # 按日期排序，取最近 days 天
+        # 按日期排序
         df = df.sort_values('date', ascending=True)
-        df = df.tail(days)
+
+        # 如果不获取全部历史，截取最近 days 天
+        if not full_history:
+            df = df.tail(days)
 
         # 计算均线和涨跌幅
         df['ma5'] = df['close'].rolling(5).mean()
         df['ma10'] = df['close'].rolling(10).mean()
         df['ma20'] = df['close'].rolling(20).mean()
         df['ma60'] = df['close'].rolling(60).mean()
+        df['ma120'] = df['close'].rolling(120).mean()
+        df['ma250'] = df['close'].rolling(250).mean()
         df['pct_chg'] = df['close'].pct_change() * 100
 
-        logger.info(f"[指数日线] {full_code} 获取成功: {len(df)} 条")
+        earliest = df.iloc[0]['date']
+        latest = df.iloc[-1]['date']
+        logger.info(f"[指数日线] {full_code} {name} 获取成功: {len(df)} 条 ({earliest} ~ {latest})")
 
         return df
 
@@ -134,17 +142,21 @@ def load_index_daily(code: str) -> Optional[pd.DataFrame]:
     return df
 
 
-def update_all_index_daily(days: int = 120) -> None:
+def update_all_index_daily(full_history: bool = True, days: int = 120) -> None:
     """
     更新所有主要指数的日线数据
 
     Args:
-        days: 获取天数
+        full_history: 是否获取全部历史数据（默认True）
+        days: 仅当 full_history=False 时有效
     """
-    logger.info(f"[指数日线] 开始更新所有指数，最近 {days} 天")
+    if full_history:
+        logger.info(f"[指数日线] 开始更新所有指数全部历史数据")
+    else:
+        logger.info(f"[指数日线] 开始更新所有指数，最近 {days} 天")
 
     for code, info in MAIN_INDEXES.items():
-        df = get_index_daily_akshare(code, days)
+        df = get_index_daily_akshare(code, full_history=full_history, days=days)
         if df is not None:
             save_index_daily(code, df)
 
@@ -166,7 +178,7 @@ def analyze_market_trend(code: str = '000001', df: Optional[pd.DataFrame] = None
     if df is None:
         df = load_index_daily(code)
         if df is None:
-            df = get_index_daily_akshare(code, days=120)
+            df = get_index_daily_akshare(code, full_history=False, days=120)
             if df is not None:
                 save_index_daily(code, df)
 
@@ -178,19 +190,37 @@ def analyze_market_trend(code: str = '000001', df: Optional[pd.DataFrame] = None
 
     name = MAIN_INDEXES.get(code, {}).get('name', '未知指数')
 
-    # 取最近数据
-    latest = df.iloc[-1]
+    # 取最近数据（用于趋势分析）
+    df_recent = df.tail(250)  # 近一年数据
+
+    # 最新数据
+    latest = df_recent.iloc[-1]
     close = float(latest['close'])
     ma5 = float(latest['ma5']) if pd.notna(latest['ma5']) else close
     ma10 = float(latest['ma10']) if pd.notna(latest['ma10']) else close
     ma20 = float(latest['ma20']) if pd.notna(latest['ma20']) else close
     ma60 = float(latest['ma60']) if pd.notna(latest['ma60']) else close
 
-    # 计算近期涨跌幅
+    # 计算近期涨跌幅（用全部数据）
     recent_5d = df.tail(5)['pct_chg'].sum() if len(df) >= 5 else 0
     recent_10d = df.tail(10)['pct_chg'].sum() if len(df) >= 10 else 0
     recent_20d = df.tail(20)['pct_chg'].sum() if len(df) >= 20 else 0
     recent_60d = df.tail(60)['pct_chg'].sum() if len(df) >= 60 else 0
+    recent_250d = df.tail(250)['pct_chg'].sum() if len(df) >= 250 else 0
+
+    # 计算历史最高点和最低点（用全部历史数据）
+    hist_high = float(df['high'].max())
+    hist_low = float(df['low'].min())
+    hist_high_date = df.loc[df['high'].idxmax(), 'date']
+    hist_low_date = df.loc[df['low'].idxmin(), 'date']
+
+    # 当前距离历史最高点的跌幅
+    drawdown_from_high = (close - hist_high) / hist_high * 100 if hist_high > 0 else 0
+
+    # 获取历史数据年份范围
+    earliest_date = df.iloc[0]['date']
+    latest_date = df.iloc[-1]['date']
+    total_days = len(df)
 
     # 计算均线位置关系
     above_ma5 = close > ma5
@@ -284,9 +314,19 @@ def analyze_market_trend(code: str = '000001', df: Optional[pd.DataFrame] = None
         'recent_10d_pct': recent_10d,
         'recent_20d_pct': recent_20d,
         'recent_60d_pct': recent_60d,
+        'recent_250d_pct': recent_250d,
         'vol_ratio': vol_ratio,
         'signals': signals,
         'date': latest['date'],
+        # 历史数据
+        'hist_high': hist_high,
+        'hist_low': hist_low,
+        'hist_high_date': hist_high_date,
+        'hist_low_date': hist_low_date,
+        'drawdown_from_high': drawdown_from_high,
+        'earliest_date': earliest_date,
+        'latest_date': latest_date,
+        'total_days': total_days,
     }
 
 

@@ -407,17 +407,34 @@ def cli_trend(args):
             print(f"无法获取指数 {args.code} 数据")
             sys.exit(1)
 
-        print("=" * 60)
+        print("=" * 70)
         print(f"{trend['name']} ({trend['code']}) 趋势分析")
-        print("=" * 60)
+        print("=" * 70)
+
+        # 历史数据概览
+        print(f"\n【历史数据概览】")
+        print(f"数据范围: {trend['earliest_date']} ~ {trend['latest_date']} ({trend['total_days']} 天)")
+        print(f"历史最高: {trend['hist_high']:.2f} ({trend['hist_high_date']})")
+        print(f"历史最低: {trend['hist_low']:.2f} ({trend['hist_low_date']})")
+        print(f"当前回撤: {trend['drawdown_from_high']:.2f}% (距离历史最高)")
+
+        # 当前行情
+        print(f"\n【当前行情】")
         print(f"当前价: {trend['price']:.2f}")
         print(f"MA5: {trend['ma5']:.2f}, MA10: {trend['ma10']:.2f}, MA20: {trend['ma20']:.2f}, MA60: {trend['ma60']:.2f}")
-        print(f"近5日涨跌: {trend['recent_5d_pct']:.2f}%")
-        print(f"近20日涨跌: {trend['recent_20d_pct']:.2f}%")
-        print(f"近60日涨跌: {trend['recent_60d_pct']:.2f}%")
-        print(f"成交量比率: {trend['vol_ratio']:.2f}")
-        print(f"市场状态: {trend['status']}")
+
+        # 近期涨跌
+        print(f"\n【近期涨跌】")
+        print(f"近5日: {trend['recent_5d_pct']:.2f}%")
+        print(f"近20日: {trend['recent_20d_pct']:.2f}%")
+        print(f"近60日: {trend['recent_60d_pct']:.2f}%")
+        print(f"近250日(一年): {trend.get('recent_250d_pct', 0):.2f}%")
+
+        # 市场状态
+        print(f"\n【市场状态】")
+        print(f"状态: {trend['status']}")
         print(f"趋势强度: {trend['trend_strength']}")
+        print(f"成交量比率: {trend['vol_ratio']:.2f}")
         print("\n信号:")
         for signal in trend['signals']:
             print(f"  - {signal}")
@@ -431,22 +448,24 @@ def cli_trend(args):
         # 显示市场整体概览
         overview = get_market_overview()
 
-        print("=" * 60)
+        print("=" * 70)
         print("A股市场整体趋势")
-        print("=" * 60)
+        print("=" * 70)
         print(f"市场状态: {overview['overall_status']}")
         print(f"趋势强度: {overview['overall_strength']:.1f}")
         print(f"投资建议: {overview['recommendation']}")
-        print("=" * 60)
+        print("=" * 70)
 
         for code, trend in overview['indices'].items():
             if 'status' not in trend or trend['status'] == 'unknown':
                 continue
             print(f"\n{trend['name']} ({code}):")
-            print(f"  当前价: {trend['price']:.2f}")
-            print(f"  MA5: {trend['ma5']:.2f}, MA20: {trend['ma20']:.2f}, MA60: {trend['ma60']:.2f}")
+            print(f"  数据范围: {trend['earliest_date']} ~ {trend['latest_date']}")
+            print(f"  当前价: {trend['price']:.2f} (距历史最高 {trend['drawdown_from_high']:.1f}%)")
+            print(f"  历史最高: {trend['hist_high']:.2f} ({trend['hist_high_date']})")
+            print(f"  MA5/20/60: {trend['ma5']:.0f}/{trend['ma20']:.0f}/{trend['ma60']:.0f}")
             print(f"  近20日涨跌: {trend['recent_20d_pct']:.2f}%")
-            print(f"  近60日涨跌: {trend['recent_60d_pct']:.2f}%")
+            print(f"  近一年涨跌: {trend.get('recent_250d_pct', 0):.2f}%")
             print(f"  状态: {trend['status']}")
             for signal in trend['signals']:
                 print(f"  - {signal}")
@@ -461,16 +480,21 @@ def cli_update_index(args):
     """更新指数日线数据"""
     from src.data_sources.index_daily import update_all_index_daily, get_index_daily_akshare, save_index_daily
 
+    full_history = not args.recent  # 默认获取全部历史，除非指定 --recent
+
     if args.all:
-        print("更新所有主要指数日线数据...")
-        update_all_index_daily(days=args.days)
+        if full_history:
+            print("更新所有主要指数全部历史数据...")
+        else:
+            print(f"更新所有主要指数最近 {args.days} 天数据...")
+        update_all_index_daily(full_history=full_history, days=args.days)
         print("更新完成")
     elif args.code:
         print(f"更新指数 {args.code} 日线数据...")
-        df = get_index_daily_akshare(args.code, days=args.days)
+        df = get_index_daily_akshare(args.code, full_history=full_history, days=args.days)
         if df is not None:
             save_index_daily(args.code, df)
-            print(f"更新成功: {len(df)} 条数据")
+            print(f"更新成功: {len(df)} 条数据 ({df.iloc[0]['date']} ~ {df.iloc[-1]['date']})")
         else:
             print(f"更新失败")
     else:
@@ -602,7 +626,8 @@ def main():
     idx_parser = subparsers.add_parser('update-index', help='更新指数日线数据')
     idx_parser.add_argument('--all', action='store_true', help='更新所有主要指数')
     idx_parser.add_argument('--code', help='指定指数代码')
-    idx_parser.add_argument('--days', type=int, default=120, help='获取天数（默认120天）')
+    idx_parser.add_argument('--days', type=int, default=120, help='获取天数（仅当 --recent 时有效）')
+    idx_parser.add_argument('--recent', action='store_true', help='只获取最近数据（默认获取全部历史）')
     idx_parser.set_defaults(func=cli_update_index)
 
     args = parser.parse_args()
