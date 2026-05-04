@@ -47,6 +47,13 @@ class StubConfig:
     prefetch_realtime_quotes: bool = True
     realtime_source_priority: str = "efinance,akshare_em"
     tickflow_api_key: str = ""
+    # 基本面 pipeline 属性
+    enable_fundamental_pipeline: bool = True
+    fundamental_stage_timeout_seconds: float = 30.0
+    fundamental_fetch_timeout_seconds: float = 10.0
+    fundamental_cache_ttl_seconds: int = 3600
+    fundamental_retry_max: int = 2
+    fundamental_cache_max_entries: int = 256
 
 def get_config() -> StubConfig:
     """Stub get_config - returns default config"""
