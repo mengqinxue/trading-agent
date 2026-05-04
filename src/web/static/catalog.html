@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数据词典 - Trading Agent</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        .catalog-container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        .section-card {
+            background: #fff;
+            border: 1px solid #e8e8e8;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .source-grid, .type-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 15px;
+        }
+        .source-item, .type-item {
+            padding: 15px;
+            border: 1px solid #e8e8e8;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .source-item:hover, .type-item:hover {
+            border-color: #1890ff;
+        }
+        .source-name, .type-name {
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+        .source-status, .type-status {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+            margin-left: 8px;
+        }
+        .status-active {
+            background: #f6ffed;
+            color: #52c41a;
+            border: 1px solid #b7eb8f;
+        }
+        .status-available {
+            background: #e6f7ff;
+            color: #1890ff;
+            border: 1px solid #91d5ff;
+        }
+        .status-config-required {
+            background: #fff7e6;
+            color: #fa8c16;
+            border: 1px solid #ffd591;
+        }
+        .status-partial {
+            background: #fffbe6;
+            color: #faad14;
+            border: 1px solid #ffe58f;
+        }
+        .status-implemented {
+            background: #f6ffed;
+            color: #52c41a;
+            border: 1px solid #b7eb8f;
+        }
+        .source-desc, .type-desc {
+            color: #666;
+            font-size: 14px;
+        }
+        .source-config {
+            color: #999;
+            font-size: 12px;
+            margin-top: 8px;
+        }
+        .type-update {
+            color: #999;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+        .fields-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .fields-table th, .fields-table td {
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .fields-table th {
+            background: #fafafa;
+            font-weight: 500;
+        }
+        .sample-box {
+            background: #f5f5f5;
+            border-radius: 6px;
+            padding: 15px;
+            overflow-x: auto;
+        }
+        .sample-json {
+            font-family: monospace;
+            white-space: pre-wrap;
+            color: #333;
+        }
+        .category-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-left: 8px;
+        }
+        .category-trade {
+            background: #e6f7ff;
+            color: #1890ff;
+        }
+        .category-fundamental {
+            background: #f6ffed;
+            color: #52c41a;
+        }
+        .category-market {
+            background: #fff7e6;
+            color: #fa8c16;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>数据词典</h1>
+            <p>查看系统可用的数据源、数据类型和字段说明</p>
+            <a href="/" class="back-link">返回主页</a>
+        </header>
+
+        <main class="catalog-container">
+            <!-- 数据源 -->
+            <div class="section-card">
+                <h2 class="section-title">数据源</h2>
+                <div id="sources-grid" class="source-grid">
+                    <div class="loading">加载中...</div>
+                </div>
+            </div>
+
+            <!-- 数据类型 -->
+            <div class="section-card">
+                <h2 class="section-title">数据类型</h2>
+                <div id="types-grid" class="type-grid">
+                    <div class="loading">加载中...</div>
+                </div>
+            </div>
+
+            <!-- 字段说明（动态加载） -->
+            <div class="section-card" id="fields-section" style="display: none;">
+                <h2 class="section-title" id="fields-title">字段说明</h2>
+                <table class="fields-table" id="fields-table">
+                    <thead>
+                        <tr>
+                            <th>字段名</th>
+                            <th>类型</th>
+                            <th>说明</th>
+                        </tr>
+                    </thead>
+                    <tbody id="fields-body">
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 数据样例（动态加载） -->
+            <div class="section-card" id="sample-section" style="display: none;">
+                <h2 class="section-title" id="sample-title">数据样例</h2>
+                <div class="sample-box">
+                    <pre class="sample-json" id="sample-json"></pre>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>Trading Agent v0.1.0 | 数据来源 Akshare/Efinance/Tushare</p>
+        </footer>
+    </div>
+
+    <script src="/static/catalog.js"></script>
+</body>
+</html>

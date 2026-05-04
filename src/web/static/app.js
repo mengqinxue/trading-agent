@@ -8,6 +8,8 @@ let stockList = [];
 // DOM 元素
 const btnMarketAnalysis = document.getElementById('btn-market-analysis');
 const btnStockAnalysis = document.getElementById('btn-stock-analysis');
+const btnChatQuery = document.getElementById('btn-chat-query');
+const btnDataCatalog = document.getElementById('btn-data-catalog');
 const btnViewTasks = document.getElementById('btn-view-tasks');
 const btnWorkflowDoc = document.getElementById('btn-workflow-doc');
 const panelMarketAnalysis = document.getElementById('panel-market-analysis');
@@ -30,7 +32,7 @@ function showPanel(panelId) {
     panels.forEach(p => p.classList.add('hidden'));
     document.getElementById(panelId).classList.remove('hidden');
 
-    const buttons = [btnMarketAnalysis, btnStockAnalysis, btnViewTasks, btnWorkflowDoc];
+    const buttons = [btnMarketAnalysis, btnStockAnalysis, btnChatQuery, btnDataCatalog, btnViewTasks, btnWorkflowDoc];
     buttons.forEach(b => b.classList.remove('active'));
 }
 
@@ -72,6 +74,16 @@ btnViewTasks.addEventListener('click', () => {
 btnWorkflowDoc.addEventListener('click', () => {
     showPanel('panel-workflow-doc');
     btnWorkflowDoc.classList.add('active');
+});
+
+// 智能查询跳转
+btnChatQuery.addEventListener('click', () => {
+    window.location.href = '/static/chat.html';
+});
+
+// 数据词典跳转
+btnDataCatalog.addEventListener('click', () => {
+    window.location.href = '/static/catalog.html';
 });
 
 // 添加股票行

@@ -12,6 +12,151 @@ from src.scheduler.task_queue import task_queue
 from src.scheduler.workspace_manager import list_all_tasks, get_task_folder_by_id, get_task_detail
 
 
+def cli_query(args):
+    """AI 自然语言查询"""
+    from src.query.ai_query import get_service
+
+    print("=" * 60)
+    print("AI 智能查询")
+    print("=" * 60)
+    print(f"问题: {args.query}\n")
+
+    try:
+        service = get_service()
+        result = service.query(args.query)
+
+        if not result.get("success"):
+            print(f"\n查询失败: {result.get('error', '未知错误')}")
+            sys.exit(1)
+
+        # 显示 AI 解释
+        intent = result.get("intent", {})
+        print(f"AI 理解: {intent.get('explanation', '')}\n")
+
+        # 显示结果
+        stocks = result.get("data", {}).get("stocks", [])
+        count = result.get("data", {}).get("count", 0)
+
+        print(f"查询结果: 共 {count} 只股票\n")
+
+        if stocks:
+            print("代码      名称            行业        涨幅     5日涨幅  20日涨幅  换手率")
+            print("-" * 70)
+            for s in stocks[:20]:
+                print(
+                    f"{s['code']:8} {s['name']:12} "
+                    f"{s.get('industry', '未知')[:8]:8} "
+                    f"{s.get('change_pct', 0):>6.2f}% "
+                    f"{s.get('change_5d', 0):>6.2f}% "
+                    f"{s.get('change_20d', 0):>6.2f}% "
+                    f"{s.get('turnover', 0):>6.2f}%"
+                )
+
+        # 显示 AI 回答
+        print(f"\n{result.get('response', '')}")
+
+        if args.output:
+            with open(args.output, "w", encoding="utf-8") as f:
+                json.dump(result, f, ensure_ascii=False, indent=2)
+            print(f"\n结果已保存到: {args.output}")
+
+    except Exception as e:
+        print(f"\n查询失败: {e}")
+        logger.error(f"AI 查询失败: {e}")
+        sys.exit(1)
+
+
+def cli_template_query(args):
+    """模板查询（快速查询）"""
+    from src.query import get_engine
+
+    print("=" * 60)
+    print("模板查询")
+    print("=" * 60)
+
+    engine = get_engine()
+
+    # 构建参数
+    params = {}
+    if args.threshold:
+        params["threshold"] = args.threshold
+    if args.n:
+        params["n"] = args.n
+
+    try:
+        result = engine.query(args.template, **params)
+
+        if "error" in result:
+            print(f"\n查询失败: {result['error']}")
+            sys.exit(1)
+
+        print(f"\n{result.get('name', args.template)}: {result.get('count', 0)} 只\n")
+
+        stocks = result.get("stocks", [])
+        if stocks:
+            print("代码      名称            涨幅     换手率    流通市值")
+            print("-" * 50)
+            for s in stocks[:args.n or 20]:
+                circ_mv = s.get("circ_mv", 0)
+                circ_str = f"{circ_mv/1e8:.1f}亿" if circ_mv > 1e8 else f"{circ_mv/1e4:.1f}万"
+                print(
+                    f"{s['code']:8} {s['name']:12} "
+                    f"{s.get('change_pct', 0):>6.2f}% "
+                    f"{s.get('turnover_rate', 0):>6.2f}% "
+                    f"{circ_str:>8}"
+                )
+
+        if args.output:
+            with open(args.output, "w", encoding="utf-8") as f:
+                json.dump(result, f, ensure_ascii=False, indent=2)
+
+    except Exception as e:
+        print(f"\n查询失败: {e}")
+        sys.exit(1)
+
+
+def cli_market_stats(args):
+    """市场统计"""
+    from src.query import get_engine
+
+    engine = get_engine()
+    stats = engine.get_market_stats()
+
+    print("=" * 60)
+    print("市场统计")
+    print("=" * 60)
+    print(f"日期: {stats.get('date', '')}\n")
+
+    print(f"总股票数: {stats.get('total', 0)}")
+    print(f"上涨家数: {stats.get('up_count', 0)} ({stats.get('up_ratio', 0):.1f}%)")
+    print(f"下跌家数: {stats.get('down_count', 0)}")
+    print(f"平盘家数: {stats.get('flat_count', 0)}")
+    print(f"涨停家数: {stats.get('limit_up_count', 0)}")
+    print(f"跌停家数: {stats.get('limit_down_count', 0)}")
+
+
+def cli_list_templates(args):
+    """列出查询模板"""
+    from src.query import get_template_list
+
+    templates = get_template_list()
+
+    print("=" * 60)
+    print("查询模板列表")
+    print("=" * 60)
+    print(f"共 {len(templates)} 个模板\n")
+
+    for t in templates:
+        print(f"  {t['id']:15} - {t['name']}")
+        print(f"                    {t['description']}")
+        if t.get("params"):
+            params_desc = ", ".join(
+                [f"{k}={v.get('default')}" for k, v in t["params"].items()]
+            )
+            print(f"                    参数: {params_desc}")
+        print()
+
+
 def cli_market_analysis(args):
     """执行市场分析"""
     print("=" * 60)
@@ -257,6 +402,21 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 示例:
+  # AI 自然语言查询
+  trading-agent query "涨幅超过5%的银行股"
+  trading-agent query "最近一周上涨的科技股" -o result.json
+
+  # 模板查询
+  trading-agent tpl limit_up
+  trading-agent tpl high_turnover --threshold 15
+  trading-agent tpl top_gainers --n 30
+
+  # 市场统计
+  trading-agent stats
+
+  # 查询模板列表
+  trading-agent templates
+
   # 市场分析
   trading-agent market
 
@@ -284,6 +444,28 @@ def main():
     )
 
     subparsers = parser.add_subparsers(dest='command', help='可用命令')
+
+    # AI 查询命令
+    query_parser = subparsers.add_parser('query', help='AI 自然语言查询')
+    query_parser.add_argument('query', help='自然语言查询问题')
+    query_parser.add_argument('-o', '--output', help='保存结果到文件 (JSON)')
+    query_parser.set_defaults(func=cli_query)
+
+    # 模板查询命令
+    tpl_parser = subparsers.add_parser('tpl', help='模板快速查询')
+    tpl_parser.add_argument('template', help='模板ID（如 limit_up, high_turnover）')
+    tpl_parser.add_argument('--threshold', type=float, help='阈值参数')
+    tpl_parser.add_argument('--n', type=int, help='返回数量')
+    tpl_parser.add_argument('-o', '--output', help='保存结果到文件 (JSON)')
+    tpl_parser.set_defaults(func=cli_template_query)
+
+    # 市场统计命令
+    stats_parser = subparsers.add_parser('stats', help='市场涨跌统计')
+    stats_parser.set_defaults(func=cli_market_stats)
+
+    # 模板列表命令
+    templates_parser = subparsers.add_parser('templates', help='查询模板列表')
+    templates_parser.set_defaults(func=cli_list_templates)
 
     # 市场分析命令
     market_parser = subparsers.add_parser('market', help='市场分析')

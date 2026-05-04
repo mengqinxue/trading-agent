@@ -126,7 +126,11 @@ def _get_daily_baostock(code: str, days: int) -> Optional[pd.DataFrame]:
     """使用 Baostock 获取日线数据"""
     try:
         import baostock as bs
+    except ImportError:
+        logger.warning("[Baostock] baostock 库未安装，跳过此数据源")
+        return None
 
+    try:
         # 登录
         lg = bs.login()
         if lg.error_code != '0':

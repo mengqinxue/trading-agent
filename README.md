@@ -17,19 +17,32 @@ A股交易辅助系统 - 基于 LangGraph 多 agent 协作的市场和个股分�
 - 综合决策（买入/卖出/持有）
 - 持仓建议（仓位、止损止盈）
 
-### 3. Web Dashboard
+### 3. AI 智能查询（新增）
+- 自然语言查询本地股票数据
+- AI（GLM-5）理解语义并返回结果
+- 示例："涨幅超过5%的银行股"、"最近涨停的股票"
+- 基于本地数据（data/CN_A），无需网络请求
+
+### 4. 数据词典（新增）
+- 查看可用数据源（Akshare/Efinance/Tushare）
+- 数据类型说明（实时行情、日线、筹码分布）
+- 字段定义和数据样例
+
+### 5. Web Dashboard
 - 任务列表管理（基于 Workspace 文件系统）
 - **批量股票分析（支持每只股票独立持仓）**
 - 实时日志查看
 - Workflow 流程图可视化
 - 任务详情页面（含执行步骤时间线）
+- **智能查询页面（自然语言输入）**
+- **数据词典页面**
 
-### 4. 股票数据管理
+### 6. 股票数据管理
 - 下载全市场股票列表（5800+ 只）
 - 批量更新日线数据
 - 归档退市股票数据
 
-### 5. 数据源管理（新增）
+### 7. 数据源管理
 - 多数据源自动切换（防单点故障）
 - 熔断机制保护（防 API 封禁）
 - 实时行情增强（量比、换手率、PE/PB、市值）
@@ -517,6 +530,55 @@ trading-agent/
 
 ## CLI 命令详解
 
+### query - AI 自然语言查询（新增）
+
+```bash
+# AI 自然语言查询本地股票数据
+trading-agent query "涨幅超过5%的银行股有哪些"
+trading-agent query "最近一周上涨的科技股" -o result.json
+trading-agent query "换手率超过20%的小盘股"
+```
+
+AI 会理解语义，查询本地数据库（data/CN_A/），返回符合条件的股票列表。
+
+### tpl - 模板快速查询（新增）
+
+```bash
+# 查询涨停股
+trading-agent tpl limit_up
+
+# 查询高换手率股票（阈值15%）
+trading-agent tpl high_turnover --threshold 15
+
+# 查询涨幅榜前30名
+trading-agent tpl top_gainers --n 30
+
+# 查询大跌股（阈值-3%）
+trading-agent tpl big_fall --threshold -3
+```
+
+可用模板：`limit_up`, `limit_down`, `high_turnover`, `big_rise`, `big_fall`, `top_gainers`, `top_fallers`, `top_turnover`, `top_volume`
+
+### stats - 市场统计（新增）
+
+```bash
+trading-agent stats
+```
+
+输出：
+- 总股票数
+- 上涨家数/下跌家数/平盘家数
+- 涨停家数/跌停家数
+- 上涨占比
+
+### templates - 查询模板列表（新增）
+
+```bash
+trading-agent templates
+```
+
+显示所有可用查询模板和参数说明。
+
 ### market - 市场分析
 
 ```bash
@@ -593,6 +655,53 @@ trading-agent update --codes 600036 --end-date 20260503
 ---
 
 ## API 接口
+
+### AI 自然语言查询（新增）
+
+```bash
+POST /api/chat/ai-query
+Content-Type: application/json
+
+{
+  "query": "涨幅超过5%的银行股有哪些"
+}
+```
+
+返回：
+```json
+{
+  "success": true,
+  "query": "涨幅超过5%的银行股有哪些",
+  "intent": {
+    "explanation": "用户想查询涨幅超过5%的银行股",
+    "conditions": [...]
+  },
+  "data": {
+    "stocks": [...],
+    "count": 10
+  },
+  "response": "找到10只符合条件的银行股..."
+}
+```
+
+### 模板查询
+
+```bash
+GET /api/chat/templates          # 模板列表
+GET /api/chat/limit-up           # 涨停股
+GET /api/chat/high-turnover?threshold=10  # 高换手率
+GET /api/chat/market-stats       # 市场统计
+GET /api/chat/sector-rankings    # 板块榜
+```
+
+### 数据词典（新增）
+
+```bash
+GET /api/catalog/data-sources    # 数据源列表
+GET /api/catalog/data-types      # 数据类型列表
+GET /api/catalog/fields/实时行情  # 字段说明
+GET /api/catalog/sample/实时行情  # 数据样例
+```
 
 ### 创建市场分析任务
 
@@ -778,20 +887,65 @@ DELETE /api/tasks/{task_id}
 ### 运行测试
 
 ```bash
-pytest tests/
+# 运行全部测试
+uv run pytest tests/ -v
+
+# 运行带覆盖率报告
+uv run pytest tests/ -v --cov=src --cov-report=term-missing
+
+# 运行单个测试文件
+uv run pytest tests/test_query.py -v
+
+# 测试统计：68 用例，62 通过，3 失败，3 跳过
 ```
+
+详见 [测试文档](docs/TESTING.md)
 
 ### 类型检查
 
 ```bash
-mypy src/trading_agent
+mypy src/
 ```
 
 ### 代码格式化
 
 ```bash
-black src/trading_agent
-ruff check src/trading_agent
+black src/
+ruff check src/
+```
+
+### 项目结构
+
+```
+src/
+├── cli.py              # CLI 命令入口
+├── core/               # 核心模块（config, logger, llm）
+├── data_sources/       # 数据源管理
+│   ├── fetcher.py      # 统一数据获取入口
+│   ├── providers/      # 多数据源实现
+│   └── trade_daily.py  # 日线数据
+├── query/              # 查询模块（新增）
+│   ├── engine.py       # QueryEngine
+│   ├── templates.py    # 查询模板
+│   └── ai_query.py     # AI 自然语言查询
+├── agents/             # LangGraph Agents
+├── workflows/          # Workflows
+├── web/                # Web 界面
+│   ├── routes/
+│   │   ├── chat.py     # 智能查询 API
+│   │   └── catalog.py  # 数据词典 API
+│   └── static/
+│       ├── chat.html   # 智能查询页面
+│       └── catalog.html # 数据词典页面
+└── scheduler/          # 任务调度
+
+tests/
+├── conftest.py         # pytest 配置
+├── test_core.py        # 核心模块测试
+├── test_query.py       # 查询模块测试
+├── test_data_sources.py # 数据源测试
+├── test_web.py         # Web 路由测试
+└── test_cli.py         # CLI 测试
 ```
 
 ---
@@ -810,13 +964,22 @@ MIT License
 
 ## 更新日志
 
+### v0.3.0 (2026-05-04)
+
+- **新增 AI 智能查询**：自然语言查询本地股票数据
+- **新增数据词典**：数据源、数据类型、字段说明展示
+- **新增 CLI 命令**：`query`, `tpl`, `stats`, `templates`
+- **新增测试套件**：68 测试用例，覆盖率 18%
+- **修复返回按钮样式**：蓝紫渐变按钮
+- **夜间数据补全脚本**：批量补全行业、基本面、标签数据
+
 ### v0.2.0 (2026-05-03)
 
 - 重构任务管理：移除 SQLite，改用 Workspace 文件系统
 - 任务详情页：Workflow 流程图可视化
 - 新增 InitAgent、Aggregator、FeishuPush agents
 - Judge 增强：归因分析、反事实推断
-- 集成数据源管理系统（tmp/data_provider）
+- 集成数据源管理系统
 
 ### v0.1.0 (2026-05-03)
 
@@ -824,5 +987,4 @@ MIT License
 - 实现股票分析 Workflow（含辩论机制）
 - CLI 命令行工具
 - Web Dashboard
-- SQLite 任务存储
 - 阿里云 DashScope + GLM-5 集成

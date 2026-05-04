@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from pathlib import Path
 
-from .routes import tasks
+from .routes import tasks, chat, catalog
 
 
 @asynccontextmanager
@@ -26,6 +26,8 @@ app = FastAPI(
 )
 
 app.include_router(tasks.router, prefix="/api/tasks", tags=["tasks"])
+app.include_router(chat.router, prefix="/api/chat", tags=["chat"])
+app.include_router(catalog.router, prefix="/api/catalog", tags=["catalog"])
 
 
 @app.get("/api/stocks/{code}/name")

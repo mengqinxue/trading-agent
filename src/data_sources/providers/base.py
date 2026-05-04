@@ -36,9 +36,9 @@ try:
     from src.data.stock_mapping import STOCK_NAME_MAP, is_meaningful_stock_name
 except ImportError:
     STOCK_NAME_MAP: Dict[str, str] = {}
-    def is_meaningful_stock_name(name: str) -> bool:
-        """Stub function - always return True"""
-        return bool(name and len(name) > 1)
+    def is_meaningful_stock_name(name: str, stock_code: str = "") -> bool:
+        """Stub function - check if name is meaningful (accepts 2 args for compatibility)"""
+        return bool(name and len(name) > 1 and not name.startswith('stk'))
 
 # Stub config for src.config (trading_agent uses different config)
 class StubConfig:

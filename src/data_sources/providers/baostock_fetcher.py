@@ -75,12 +75,17 @@ class BaostockFetcher(BaseFetcher):
     def _get_baostock(self):
         """
         延迟加载 baostock 模块
-        
+
         只在首次使用时导入，避免未安装时报错
         """
         if self._bs_module is None:
-            import baostock as bs
-            self._bs_module = bs
+            try:
+                import baostock as bs
+                self._bs_module = bs
+            except ImportError:
+                logger.warning("[Baostock] baostock 库未安装，此数据源不可用")
+                self._bs_module = None
+                raise DataFetchError("baostock 库未安装")
         return self._bs_module
     
     @contextmanager
