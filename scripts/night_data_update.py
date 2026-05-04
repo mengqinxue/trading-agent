@@ -74,6 +74,8 @@ class NightDataUpdater:
         """加载股票列表"""
         if STOCK_LIST_FILE.exists():
             self.stock_list = pd.read_csv(STOCK_LIST_FILE)
+            # 确保 code 列为字符串类型，便于匹配
+            self.stock_list['code'] = self.stock_list['code'].astype(str)
             self.total_stocks = len(self.stock_list)
             logger.info(f"[数据补全] 加载股票列表: {self.total_stocks} 只")
         else:
@@ -343,6 +345,8 @@ class NightDataUpdater:
             return
 
         valuation_df = pd.read_csv(valuation_file)
+        # 确保 code 列为字符串类型，便于匹配
+        valuation_df['code'] = valuation_df['code'].astype(str)
 
         # 加载行业数据
         industry_map_file = DATA_DIR / "stock_industry_map.json"
