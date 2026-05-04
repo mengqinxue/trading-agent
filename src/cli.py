@@ -396,6 +396,87 @@ def cli_update_data(args):
         print("请指定 --all 或 --codes")
 
 
+def cli_trend(args):
+    """显示市场趋势分析"""
+    from src.data_sources.index_daily import get_market_overview, analyze_market_trend
+
+    if args.code:
+        # 分析单个指数
+        trend = analyze_market_trend(args.code)
+        if 'status' not in trend or trend['status'] == 'unknown':
+            print(f"无法获取指数 {args.code} 数据")
+            sys.exit(1)
+
+        print("=" * 60)
+        print(f"{trend['name']} ({trend['code']}) 趋势分析")
+        print("=" * 60)
+        print(f"当前价: {trend['price']:.2f}")
+        print(f"MA5: {trend['ma5']:.2f}, MA10: {trend['ma10']:.2f}, MA20: {trend['ma20']:.2f}, MA60: {trend['ma60']:.2f}")
+        print(f"近5日涨跌: {trend['recent_5d_pct']:.2f}%")
+        print(f"近20日涨跌: {trend['recent_20d_pct']:.2f}%")
+        print(f"近60日涨跌: {trend['recent_60d_pct']:.2f}%")
+        print(f"成交量比率: {trend['vol_ratio']:.2f}")
+        print(f"市场状态: {trend['status']}")
+        print(f"趋势强度: {trend['trend_strength']}")
+        print("\n信号:")
+        for signal in trend['signals']:
+            print(f"  - {signal}")
+
+        if args.output:
+            with open(args.output, "w", encoding="utf-8") as f:
+                json.dump(trend, f, ensure_ascii=False, indent=2)
+            print(f"\n结果已保存到: {args.output}")
+
+    else:
+        # 显示市场整体概览
+        overview = get_market_overview()
+
+        print("=" * 60)
+        print("A股市场整体趋势")
+        print("=" * 60)
+        print(f"市场状态: {overview['overall_status']}")
+        print(f"趋势强度: {overview['overall_strength']:.1f}")
+        print(f"投资建议: {overview['recommendation']}")
+        print("=" * 60)
+
+        for code, trend in overview['indices'].items():
+            if 'status' not in trend or trend['status'] == 'unknown':
+                continue
+            print(f"\n{trend['name']} ({code}):")
+            print(f"  当前价: {trend['price']:.2f}")
+            print(f"  MA5: {trend['ma5']:.2f}, MA20: {trend['ma20']:.2f}, MA60: {trend['ma60']:.2f}")
+            print(f"  近20日涨跌: {trend['recent_20d_pct']:.2f}%")
+            print(f"  近60日涨跌: {trend['recent_60d_pct']:.2f}%")
+            print(f"  状态: {trend['status']}")
+            for signal in trend['signals']:
+                print(f"  - {signal}")
+
+        if args.output:
+            with open(args.output, "w", encoding="utf-8") as f:
+                json.dump(overview, f, ensure_ascii=False, indent=2)
+            print(f"\n结果已保存到: {args.output}")
+
+
+def cli_update_index(args):
+    """更新指数日线数据"""
+    from src.data_sources.index_daily import update_all_index_daily, get_index_daily_akshare, save_index_daily
+
+    if args.all:
+        print("更新所有主要指数日线数据...")
+        update_all_index_daily(days=args.days)
+        print("更新完成")
+    elif args.code:
+        print(f"更新指数 {args.code} 日线数据...")
+        df = get_index_daily_akshare(args.code, days=args.days)
+        if df is not None:
+            save_index_daily(args.code, df)
+            print(f"更新成功: {len(df)} 条数据")
+        else:
+            print(f"更新失败")
+    else:
+        print("请指定 --all 或 --code")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Trading Agent - A股交易辅助系统",
@@ -416,6 +497,10 @@ def main():
 
   # 查询模板列表
   trading-agent templates
+
+  # 市场趋势分析（判断牛熊市）
+  trading-agent trend
+  trading-agent trend --code 000001
 
   # 市场分析
   trading-agent market
@@ -440,6 +525,10 @@ def main():
 
   # 更新所有股票数据（慎用，耗时较长）
   trading-agent update --all --batch-size 100 --delay 1.0
+
+  # 更新指数日线数据
+  trading-agent update-index --all
+  trading-agent update-index --code 000001 --days 250
         """
     )
 
@@ -502,6 +591,19 @@ def main():
     update_parser.add_argument('--batch-size', type=int, default=50, help='每批次数量')
     update_parser.add_argument('--delay', type=float, default=0.5, help='批次间隔秒数')
     update_parser.set_defaults(func=cli_update_data)
+
+    # 市场趋势命令
+    trend_parser = subparsers.add_parser('trend', help='市场趋势分析（判断牛熊市）')
+    trend_parser.add_argument('--code', help='指定指数代码（如 000001），默认显示整体')
+    trend_parser.add_argument('-o', '--output', help='保存结果到文件 (JSON)')
+    trend_parser.set_defaults(func=cli_trend)
+
+    # 指数数据更新命令
+    idx_parser = subparsers.add_parser('update-index', help='更新指数日线数据')
+    idx_parser.add_argument('--all', action='store_true', help='更新所有主要指数')
+    idx_parser.add_argument('--code', help='指定指数代码')
+    idx_parser.add_argument('--days', type=int, default=120, help='获取天数（默认120天）')
+    idx_parser.set_defaults(func=cli_update_index)
 
     args = parser.parse_args()
 

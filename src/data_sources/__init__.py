@@ -14,6 +14,13 @@ from .trade_realtime import get_realtime, get_realtime_as_dict
 from .trade_chip import get_chip_distribution, get_chip_status
 from .trade_dragon_tiger import get_dragon_tiger, get_dragon_tiger_summary
 from .market_index import get_main_indices, get_index_by_code, get_index_overview
+from .index_daily import (
+    get_index_daily_akshare,
+    analyze_market_trend,
+    get_market_overview,
+    update_all_index_daily,
+    load_index_daily,
+)
 from .market_sector import (
     get_sector_rankings, get_hot_sectors, get_weak_sectors,
     get_stock_belong_sectors, get_sector_stocks
@@ -58,6 +65,11 @@ __all__ = [
     "get_main_indices",
     "get_index_by_code",
     "get_index_overview",
+    "get_index_daily_akshare",
+    "analyze_market_trend",
+    "get_market_overview",
+    "update_all_index_daily",
+    "load_index_daily",
     "get_sector_rankings",
     "get_hot_sectors",
     "get_weak_sectors",
