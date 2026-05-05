@@ -874,11 +874,15 @@ class DataFetcherManager:
                 if 'name' in df.columns:
                     match = df[df['name'] == stock_code]
                     if not match.empty:
-                        code = str(match.iloc[0]['code'])
+                        row = match.iloc[0]
+                        code = str(row['code'])
                         # 补零到6位（如 1 -> 000001）
                         if code.isdigit():
                             code = code.zfill(6)
-                        logger.info(f"[代码解析] 股票名称 '{stock_code}' -> 代码 '{code}'")
+                        # 同时缓存名称，避免后续再次查询
+                        name = str(row.get('name', stock_code))
+                        self._cache_stock_name(code, name)
+                        logger.info(f"[代码解析] 股票名称 '{stock_code}' -> 代码 '{code}', 名称 '{name}'")
                         return code
             except Exception as e:
                 logger.warning(f"[代码解析] 读取股票列表失败: {e}")
@@ -1549,23 +1553,31 @@ class DataFetcherManager:
     def get_stock_name(self, stock_code: str, allow_realtime: bool = True) -> Optional[str]:
         """
         获取股票中文名称（自动切换数据源）
-        
+
         尝试从多个数据源获取股票名称：
         1. 先从内存缓存中获取（如果有）
         2. 再尝试本地维护映射与 stocks.index.json 索引
         3. 然后按需查询实时行情
         4. 依次尝试各个数据源的 get_stock_name 方法
-        
+
         Args:
-            stock_code: 股票代码
+            stock_code: 股票代码或名称
             allow_realtime: Whether to query realtime quote first. Set False when
                 caller only wants lightweight prefetch without triggering heavy
                 realtime source calls.
-            
+
         Returns:
             股票中文名称，所有数据源都失败则返回 None
         """
         raw_stock_code = (stock_code or "").strip()
+
+        # 解析股票代码（支持名称输入）
+        try:
+            stock_code = self._resolve_stock_code(raw_stock_code)
+        except DataFetchError:
+            # 如果解析失败，可能是传入的已经是名称
+            pass
+
         # Normalize code (strip SH/SZ prefix etc.)
         stock_code = normalize_stock_code(stock_code)
         static_name = STOCK_NAME_MAP.get(stock_code)
