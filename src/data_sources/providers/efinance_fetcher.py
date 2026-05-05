@@ -277,11 +277,11 @@ class EfinanceFetcher(BaseFetcher):
     
     name = "EfinanceFetcher"
     priority = int(os.getenv("EFINANCE_PRIORITY", "0"))  # 最高优先级，排在 AkshareFetcher 之前
-    
+
     def __init__(self, sleep_min: float = 1.5, sleep_max: float = 3.0):
         """
         初始化 EfinanceFetcher
-        
+
         Args:
             sleep_min: 最小休眠时间（秒）
             sleep_max: 最大休眠时间（秒）
@@ -289,9 +289,26 @@ class EfinanceFetcher(BaseFetcher):
         self.sleep_min = sleep_min
         self.sleep_max = sleep_max
         self._last_request_time: Optional[float] = None
+        self._available: bool = False
+
+        # 检测 efinance 是否可用
+        try:
+            import efinance as ef
+            self._ef_module = ef
+            self._available = True
+            logger.debug("[EfinanceFetcher] efinance 库已加载")
+        except ImportError:
+            logger.debug("[EfinanceFetcher] efinance 库未安装，此数据源不可用")
+            self._ef_module = None
+            self._available = False
+
         # 东财补丁开启才执行打补丁操作
-        if get_config().enable_eastmoney_patch:
+        if self._available and get_config().enable_eastmoney_patch and eastmoney_patch:
             eastmoney_patch()
+
+    def _is_available(self) -> bool:
+        """检查数据源是否可用"""
+        return self._available
 
     @staticmethod
     def _build_history_failure_message(
@@ -361,12 +378,12 @@ class EfinanceFetcher(BaseFetcher):
     def _fetch_raw_data(self, stock_code: str, start_date: str, end_date: str) -> pd.DataFrame:
         """
         从 efinance 获取原始数据
-        
+
         根据代码类型自动选择 API：
         - 美股：不支持，抛出异常让 DataFetcherManager 切换到其他数据源
         - 普通股票：使用 ef.stock.get_quote_history()
         - ETF 基金：使用 ef.stock.get_quote_history()（ETF 是交易所证券，使用股票 K 线接口）
-        
+
         流程：
         1. 判断代码类型（美股/股票/ETF）
         2. 设置随机 User-Agent
@@ -374,6 +391,10 @@ class EfinanceFetcher(BaseFetcher):
         4. 调用对应的 efinance API
         5. 处理返回数据
         """
+        # 检查数据源是否可用
+        if not self._available:
+            raise DataFetchError("efinance 库未安装")
+
         # 美股不支持，抛出异常让 DataFetcherManager 切换到 AkshareFetcher/YfinanceFetcher
         if _is_us_code(stock_code):
             raise DataFetchError(f"EfinanceFetcher 不支持美股 {stock_code}，请使用 AkshareFetcher 或 YfinanceFetcher")
@@ -610,16 +631,20 @@ class EfinanceFetcher(BaseFetcher):
     def get_realtime_quote(self, stock_code: str) -> Optional[UnifiedRealtimeQuote]:
         """
         获取实时行情数据
-        
+
         数据来源：ef.stock.get_realtime_quotes()
         ETF 数据源：ef.stock.get_realtime_quotes(['ETF'])
-        
+
         Args:
             stock_code: 股票代码
-            
+
         Returns:
             UnifiedRealtimeQuote 对象，获取失败返回 None
         """
+        # 检查数据源是否可用
+        if not self._available:
+            return None
+
         # ETF 需要单独请求 ETF 实时行情接口
         if _is_etf_code(stock_code):
             return self._get_etf_realtime_quote(stock_code)
@@ -1029,6 +1054,10 @@ class EfinanceFetcher(BaseFetcher):
         """
         获取板块涨跌榜 (efinance)
         """
+        # 检查数据源是否可用
+        if not self._available:
+            return None
+
         import efinance as ef
 
         try:

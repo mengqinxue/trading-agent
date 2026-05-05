@@ -139,34 +139,58 @@ class PytdxFetcher(BaseFetcher):
         self._current_host_idx = 0
         self._stock_list_cache = None  # 股票列表缓存
         self._stock_name_cache = {}    # 股票名称缓存 {code: name}
-    
+        self._available: bool = False
+        self._pytdx_module = None
+
+        # 检测 pytdx 是否可用
+        try:
+            from pytdx.hq import TdxHq_API
+            self._pytdx_module = TdxHq_API
+            self._available = True
+            logger.debug("[PytdxFetcher] pytdx 库已加载")
+        except ImportError:
+            logger.debug("[PytdxFetcher] pytdx 库未安装，此数据源不可用")
+            self._pytdx_module = None
+            self._available = False
+
+    def _is_available(self) -> bool:
+        """检查数据源是否可用"""
+        return self._available
+
     def _get_pytdx(self):
         """
         延迟加载 pytdx 模块
-        
+
         只在首次使用时导入，避免未安装时报错
         """
+        if self._pytdx_module is not None:
+            return self._pytdx_module
+        if not self._available:
+            return None
         try:
             from pytdx.hq import TdxHq_API
+            self._pytdx_module = TdxHq_API
             return TdxHq_API
         except ImportError:
-            logger.warning("pytdx 未安装，请运行: pip install pytdx")
             return None
     
     @contextmanager
     def _pytdx_session(self) -> Generator:
         """
         Pytdx 连接上下文管理器
-        
+
         确保：
         1. 进入上下文时自动连接
         2. 退出上下文时自动断开
         3. 异常时也能正确断开
-        
+
         使用示例：
             with self._pytdx_session() as api:
                 # 在这里执行数据查询
         """
+        if not self._available:
+            raise DataFetchError("pytdx 库未安装")
+
         TdxHq_API = self._get_pytdx()
         if TdxHq_API is None:
             raise DataFetchError("pytdx 库未安装")

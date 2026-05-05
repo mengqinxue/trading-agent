@@ -171,7 +171,7 @@ class TaskExecutor:
 
     def _run_market_analysis(self, task: Task) -> dict:
         """运行市场分析"""
-        from src.workflows.market_analysis import run_market_analysis_with_logging
+        from src.workflows.market_analysis import run_market_analysis
 
         write_log(self.current_folder, "启动市场分析 Workflow")
 
@@ -182,7 +182,7 @@ class TaskExecutor:
         )
         write_log(self.current_folder, "步骤: 宏观分析")
 
-        result = run_market_analysis_with_logging(self.current_folder)
+        result = run_market_analysis(self.current_folder)
 
         # 记录 workflow 步骤完成
         update_status(
@@ -194,7 +194,7 @@ class TaskExecutor:
 
     def _run_stock_analysis(self, task: Task) -> dict:
         """运行股票分析（支持每只股票独立持仓）"""
-        from src.workflows.stock_analysis import run_stock_analysis_with_logging
+        from src.workflows.stock_analysis import run_stock_analysis
 
         # 获取股票列表和持仓
         stocks = task.stocks or []
@@ -214,7 +214,7 @@ class TaskExecutor:
                 workflow_step={"name": f"stock_analysis_{code}", "started_at": datetime.now().isoformat()}
             )
 
-            result = run_stock_analysis_with_logging(
+            result = run_stock_analysis(
                 code,
                 position,
                 self.current_folder
@@ -244,7 +244,7 @@ class TaskExecutor:
             )
 
             try:
-                results[code] = run_stock_analysis_with_logging(
+                results[code] = run_stock_analysis(
                     code,
                     position,
                     self.current_folder

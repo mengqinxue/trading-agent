@@ -298,56 +298,29 @@ def create_stock_analysis_workflow(log_folder: Optional[Path] = None):
     return workflow.compile()
 
 
-def run_stock_analysis_with_logging(
+def run_stock_analysis(
     stock_code: str,
     current_position: float = 0,
-    log_folder: Path = None
+    log_folder: Optional[Path] = None
 ) -> dict:
-    """运行股票分析（带日志记录）"""
+    """运行股票分析
+
+    Args:
+        stock_code: 股票代码
+        current_position: 当前持仓金额
+        log_folder: 日志目录（可选，None 表示不记录详细日志到文件）
+
+    Returns:
+        分析结果字典
+    """
     # 清除缓存，确保获取最新数据
     from src.data_sources.data_adapter import DataAdapter
     DataAdapter.clear_cache()
 
-    write_log(log_folder, f"初始化 Stock Analysis Workflow: {stock_code}")
+    if log_folder:
+        write_log(log_folder, f"初始化 Stock Analysis Workflow: {stock_code}")
 
     workflow = create_stock_analysis_workflow(log_folder)
-
-    initial_state = {
-        "messages": [],
-        "stock_code": stock_code,
-        "stock_name": "",
-        "current_position": current_position,
-        "fundamentals": {},
-        "technical": {},
-        "analysis_summary": {},
-        "bull_arguments": [],
-        "bear_arguments": [],
-        "debate_rounds": 0,
-        "debate_history": [],
-        "final_decision": {},
-        "causal_chain": [],
-        "counterfactual": {},
-        "suggested_action": "",
-        "suggested_amount": 0,
-        "position_advice": {},
-        "risk_warnings": [],
-        "system_status": {},
-        "portfolio": {},
-        "push_result": {},
-        "logs": [f"开始分析股票 {stock_code}"]
-    }
-
-    result = workflow.invoke(initial_state)
-    return result
-
-
-def run_stock_analysis(stock_code: str, current_position: float = 0) -> dict:
-    """运行股票分析（无日志记录，兼容旧接口）"""
-    # 清除缓存，确保获取最新数据
-    from src.data_sources.data_adapter import DataAdapter
-    DataAdapter.clear_cache()
-
-    workflow = create_stock_analysis_workflow()
 
     initial_state = {
         "messages": [],

@@ -67,41 +67,56 @@ class BaostockFetcher(BaseFetcher):
     
     name = "BaostockFetcher"
     priority = int(os.getenv("BAOSTOCK_PRIORITY", "3"))
-    
+
     def __init__(self):
         """初始化 BaostockFetcher"""
         self._bs_module = None
-    
+        self._available: bool = False
+
+        # 检测 baostock 是否可用
+        try:
+            import baostock as bs
+            self._bs_module = bs
+            self._available = True
+            logger.debug("[BaostockFetcher] baostock 库已加载")
+        except ImportError:
+            logger.debug("[BaostockFetcher] baostock 库未安装，此数据源不可用")
+            self._bs_module = None
+            self._available = False
+
+    def _is_available(self) -> bool:
+        """检查数据源是否可用"""
+        return self._available
+
     def _get_baostock(self):
         """
         延迟加载 baostock 模块
 
         只在首次使用时导入，避免未安装时报错
         """
-        if self._bs_module is None:
-            try:
-                import baostock as bs
-                self._bs_module = bs
-            except ImportError:
-                logger.warning("[Baostock] baostock 库未安装，此数据源不可用")
-                self._bs_module = None
-                raise DataFetchError("baostock 库未安装")
+        if self._bs_module is not None:
+            return self._bs_module
+        if not self._available:
+            raise DataFetchError("baostock 库未安装")
         return self._bs_module
     
     @contextmanager
     def _baostock_session(self) -> Generator:
         """
         Baostock 连接上下文管理器
-        
+
         确保：
         1. 进入上下文时自动登录
         2. 退出上下文时自动登出
         3. 异常时也能正确登出
-        
+
         使用示例：
             with self._baostock_session():
                 # 在这里执行数据查询
         """
+        if not self._available:
+            raise DataFetchError("baostock 库未安装")
+
         bs = self._get_baostock()
         login_result = None
         

@@ -847,42 +847,103 @@ class DataFetcherManager:
           3. BaostockFetcher (Priority 3)
           4. YfinanceFetcher (Priority 4)
           5. LongbridgeFetcher (Priority 5) - 长桥（美股/港股兜底）
+
+        注意：只添加成功初始化的数据源（库已安装且配置正确）
         """
-        from .efinance_fetcher import EfinanceFetcher
+        fetchers_to_add: List[BaseFetcher] = []
+
+        # 尝试初始化 EfinanceFetcher
+        try:
+            from .efinance_fetcher import EfinanceFetcher
+            efinance = EfinanceFetcher()
+            if efinance._is_available():
+                fetchers_to_add.append(efinance)
+            else:
+                logger.debug("[数据源初始化] EfinanceFetcher 不可用（库未安装）")
+        except ImportError as e:
+            logger.debug(f"[数据源初始化] EfinanceFetcher 导入失败: {e}")
+        except Exception as e:
+            logger.warning(f"[数据源初始化] EfinanceFetcher 初始化失败: {e}")
+
+        # AkshareFetcher 是核心数据源，必须可用
         from .akshare_fetcher import AkshareFetcher
-        from .tushare_fetcher import TushareFetcher
-        from .pytdx_fetcher import PytdxFetcher
-        from .baostock_fetcher import BaostockFetcher
-        from .yfinance_fetcher import YfinanceFetcher
-        from .longbridge_fetcher import LongbridgeFetcher
-        # 创建所有数据源实例（优先级在各 Fetcher 的 __init__ 中确定）
-        efinance = EfinanceFetcher()
         akshare = AkshareFetcher()
-        tushare = TushareFetcher()  # 会根据 Token 配置自动调整优先级
-        pytdx = PytdxFetcher()      # 通达信数据源（可配 PYTDX_HOST/PYTDX_PORT）
-        baostock = BaostockFetcher()
-        yfinance = YfinanceFetcher()
-        longbridge = LongbridgeFetcher()  # 长桥（美股/港股兜底，懒加载）
+        fetchers_to_add.append(akshare)
+
+        # 尝试初始化 TushareFetcher
+        try:
+            from .tushare_fetcher import TushareFetcher
+            tushare = TushareFetcher()
+            # TushareFetcher 的 _available 由 API 初始化结果决定
+            if tushare._api is not None:
+                fetchers_to_add.append(tushare)
+            else:
+                logger.debug("[数据源初始化] TushareFetcher 不可用（Token 未配置或 API 初始化失败）")
+        except ImportError as e:
+            logger.debug(f"[数据源初始化] TushareFetcher 导入失败: {e}")
+        except Exception as e:
+            logger.warning(f"[数据源初始化] TushareFetcher 初始化失败: {e}")
+
+        # 尝试初始化 PytdxFetcher
+        try:
+            from .pytdx_fetcher import PytdxFetcher
+            pytdx = PytdxFetcher()
+            if pytdx._is_available():
+                fetchers_to_add.append(pytdx)
+            else:
+                logger.debug("[数据源初始化] PytdxFetcher 不可用（库未安装）")
+        except ImportError as e:
+            logger.debug(f"[数据源初始化] PytdxFetcher 导入失败: {e}")
+        except Exception as e:
+            logger.warning(f"[数据源初始化] PytdxFetcher 初始化失败: {e}")
+
+        # 尝试初始化 BaostockFetcher
+        try:
+            from .baostock_fetcher import BaostockFetcher
+            baostock = BaostockFetcher()
+            if baostock._is_available():
+                fetchers_to_add.append(baostock)
+            else:
+                logger.debug("[数据源初始化] BaostockFetcher 不可用（库未安装）")
+        except ImportError as e:
+            logger.debug(f"[数据源初始化] BaostockFetcher 导入失败: {e}")
+        except Exception as e:
+            logger.warning(f"[数据源初始化] BaostockFetcher 初始化失败: {e}")
+
+        # 尝试初始化 YfinanceFetcher
+        try:
+            from .yfinance_fetcher import YfinanceFetcher
+            yfinance = YfinanceFetcher()
+            fetchers_to_add.append(yfinance)
+        except ImportError as e:
+            logger.debug(f"[数据源初始化] YfinanceFetcher 导入失败: {e}")
+        except Exception as e:
+            logger.warning(f"[数据源初始化] YfinanceFetcher 初始化失败: {e}")
+
+        # 尝试初始化 LongbridgeFetcher
+        try:
+            from .longbridge_fetcher import LongbridgeFetcher
+            longbridge = LongbridgeFetcher()
+            fetchers_to_add.append(longbridge)
+        except ImportError as e:
+            logger.debug(f"[数据源初始化] LongbridgeFetcher 导入失败: {e}")
+        except Exception as e:
+            logger.warning(f"[数据源初始化] LongbridgeFetcher 初始化失败: {e}")
 
         # 初始化数据源列表
         self._ensure_concurrency_guards()
         with self._fetchers_lock:
-            self._fetchers = [
-                efinance,
-                akshare,
-                tushare,
-                pytdx,
-                baostock,
-                yfinance,
-                longbridge,
-            ]
+            self._fetchers = fetchers_to_add
 
-            # 按优先级排序（Tushare 如果配置了 Token 且初始化成功，优先级为 0）
+            # 按优先级排序
             self._fetchers.sort(key=lambda f: f.priority)
 
         # 构建优先级说明
-        priority_info = ", ".join([f"{f.name}(P{f.priority})" for f in self._get_fetchers_snapshot()])
-        logger.info(f"已初始化 {len(self._fetchers)} 个数据源（按优先级）: {priority_info}")
+        if self._fetchers:
+            priority_info = ", ".join([f"{f.name}(P{f.priority})" for f in self._get_fetchers_snapshot()])
+            logger.info(f"已初始化 {len(self._fetchers)} 个数据源（按优先级）: {priority_info}")
+        else:
+            logger.warning("未初始化任何数据源，请检查依赖安装")
     
     def add_fetcher(self, fetcher: BaseFetcher) -> None:
         """添加数据源并重新排序"""

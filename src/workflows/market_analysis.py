@@ -206,32 +206,19 @@ def create_market_analysis_workflow(log_folder: Optional[Path] = None):
     return workflow.compile()
 
 
-def run_market_analysis_with_logging(log_folder: Path) -> dict:
-    """运行市场分析（带日志记录）"""
-    write_log(log_folder, "初始化 Market Analysis Workflow")
+def run_market_analysis(log_folder: Optional[Path] = None) -> dict:
+    """运行市场分析
+
+    Args:
+        log_folder: 日志目录（可选，None 表示不记录详细日志到文件）
+
+    Returns:
+        分析结果字典
+    """
+    if log_folder:
+        write_log(log_folder, "初始化 Market Analysis Workflow")
 
     workflow = create_market_analysis_workflow(log_folder)
-
-    initial_state = {
-        "messages": [],
-        "market_sentiment": "",
-        "sentiment_confidence": 0.0,
-        "market_trend_detail": {},
-        "bull_bear_cycles": [],
-        "hot_sectors": [],
-        "industries": [],
-        "recommended_stocks": [],
-        "current_step": "macro",
-        "logs": ["开始市场分析"]
-    }
-
-    result = workflow.invoke(initial_state)
-    return result
-
-
-def run_market_analysis() -> dict:
-    """运行市场分析（无日志记录，兼容旧接口）"""
-    workflow = create_market_analysis_workflow()
 
     initial_state = {
         "messages": [],
