@@ -832,7 +832,62 @@ class DataFetcherManager:
             board_name = str(raw_data).strip()
             return [{"name": board_name}]
         return []
-    
+
+    def _resolve_stock_code(self, stock_code: str) -> str:
+        """
+        解析股票代码：如果传入名称，尝试转换为代码
+
+        Args:
+            stock_code: 可能是股票代码或名称
+
+        Returns:
+            有效的股票代码
+
+        Raises:
+            DataFetchError: 无法解析时抛出
+        """
+        from pathlib import Path
+
+        # 1. 先检查是否为有效代码格式
+        normalized = normalize_stock_code(stock_code)
+
+        # A股：6位数字
+        if normalized.isdigit() and len(normalized) == 6:
+            return normalized
+
+        # 港股：HK + 5位数字
+        if normalized.startswith('HK') and normalized[2:].isdigit() and len(normalized) == 7:
+            return normalized
+
+        # 美股：纯 ASCII 字母代码（如 AAPL, TSLA）
+        if normalized.isascii() and normalized.isalpha() and len(normalized) <= 5:
+            return normalized.upper()
+
+        # 2. 不是有效代码，尝试从本地列表查找
+        stock_list_path = Path("data/CN_A/stock_list.csv")
+        if stock_list_path.exists():
+            try:
+                import pandas as pd
+                # 读取 code 列为字符串，避免 000001 变成 1
+                df = pd.read_csv(stock_list_path, dtype={'code': str})
+                # 查找名称匹配的股票
+                if 'name' in df.columns:
+                    match = df[df['name'] == stock_code]
+                    if not match.empty:
+                        code = str(match.iloc[0]['code'])
+                        # 补零到6位（如 1 -> 000001）
+                        if code.isdigit():
+                            code = code.zfill(6)
+                        logger.info(f"[代码解析] 股票名称 '{stock_code}' -> 代码 '{code}'")
+                        return code
+            except Exception as e:
+                logger.warning(f"[代码解析] 读取股票列表失败: {e}")
+
+        # 3. 无法解析，抛出明确错误
+        raise DataFetchError(
+            f"无法解析股票代码: '{stock_code}'。请使用有效的6位股票代码（如 603629）或股票名称。"
+        )
+
     def _init_default_fetchers(self) -> None:
         """
         初始化默认数据源列表
@@ -982,6 +1037,9 @@ class DataFetcherManager:
             DataFetchError: 所有数据源都失败时抛出
         """
         from .us_index_mapping import is_us_index_code, is_us_stock_code
+
+        # 解析股票代码（支持名称输入）
+        stock_code = self._resolve_stock_code(stock_code)
 
         # Normalize code (strip SH/SZ prefix etc.)
         stock_code = normalize_stock_code(stock_code)
