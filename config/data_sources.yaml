@@ -1,0 +1,29 @@
+# 数据源配置
+# 大部分数据源无需配置 API Key
+
+mootdx:
+  # 使用公共服务器（默认）- 无需配置
+  server: public
+
+  # 或使用本地通达信（可选，速度更快）
+  # server: local
+  # host: 127.0.0.1
+  # port: 7709
+
+akshare:
+  # 开源库，无需配置
+  timeout: 30
+
+iwencai:
+  # 爬虫配置（可选）
+  rate_limit: 1  # 每秒请求限制
+  retry: 3       # 失败重试次数
+
+# 数据存储路径
+data_paths:
+  market: data/market
+  financial: data/financial
+  announcements: data/announcements
+  sentiment: data/sentiment
+  research: data/research
+  meta: data/meta
