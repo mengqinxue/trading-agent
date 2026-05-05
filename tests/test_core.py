@@ -77,5 +77,5 @@ class TestImports:
 
     def test_import_data_sources(self):
         """测试数据源模块导入"""
-        from src.data_sources import get_fetcher
+        from src.data import get_fetcher
         assert get_fetcher is not None

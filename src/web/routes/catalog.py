@@ -256,7 +256,7 @@ async def get_data_sample(data_type: str = Path(..., description="数据类型�
 
     try:
         if data_type == "实时行情":
-            from src.data_sources import get_fetcher
+            from src.data import get_fetcher
             fetcher = get_fetcher()
             quote = fetcher.get_realtime("000001")
             if quote:
@@ -274,7 +274,7 @@ async def get_data_sample(data_type: str = Path(..., description="数据类型�
                     "circ_mv": quote.circ_mv,
                 }
         elif data_type == "日线数据":
-            from src.data_sources import get_fetcher
+            from src.data import get_fetcher
             fetcher = get_fetcher()
             df, msg = fetcher.get_daily("000001", days=1)
             if df is not None and not df.empty:
@@ -290,7 +290,7 @@ async def get_data_sample(data_type: str = Path(..., description="数据类型�
                     "pct_chg": row.get("pct_chg", 0),
                 }
         elif data_type == "筹码分布":
-            from src.data_sources import get_fetcher
+            from src.data import get_fetcher
             fetcher = get_fetcher()
             chip = fetcher.get_chip("000001")
             if chip:
@@ -301,13 +301,13 @@ async def get_data_sample(data_type: str = Path(..., description="数据类型�
                     "concentration_70": chip.concentration_70,
                 }
         elif data_type == "指数行情":
-            from src.data_sources import get_fetcher
+            from src.data import get_fetcher
             fetcher = get_fetcher()
             indices = fetcher.get_indices()
             if indices:
                 sample = indices[0] if indices else {}
         elif data_type == "板块数据":
-            from src.data_sources import get_fetcher
+            from src.data import get_fetcher
             fetcher = get_fetcher()
             top, bottom = fetcher.get_sectors(n=1)
             sample = top[0] if top else {}

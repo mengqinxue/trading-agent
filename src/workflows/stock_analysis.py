@@ -17,7 +17,7 @@ from src.agents.stock.position_advisor import PositionAdvisor
 from src.agents.stock.feishu_push import feishu_push_node
 from src.core.llm import get_llm
 from src.core.logger import logger
-from src.data_sources.data_adapter import get_adapter
+from src.data.data_adapter import get_adapter
 from src.scheduler.workspace_manager import write_log
 
 MAX_DEBATE_ROUNDS = 10
@@ -349,7 +349,7 @@ def run_stock_analysis(
         分析结果字典
     """
     # 清除缓存，确保获取最新数据
-    from src.data_sources.data_adapter import DataAdapter
+    from src.data.data_adapter import DataAdapter
     DataAdapter.clear_cache()
 
     if log_folder:

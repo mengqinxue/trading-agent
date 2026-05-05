@@ -32,7 +32,7 @@ app.include_router(catalog.router, prefix="/api/catalog", tags=["catalog"])
 @app.get("/api/stocks/{code}/name")
 async def get_stock_name(code: str):
     """获取股票名称 - 使用 DataAdapter 统一接口"""
-    from src.data_sources.data_adapter import get_adapter
+    from src.data.data_adapter import get_adapter
 
     adapter = get_adapter()
     name = adapter.get_stock_info(code).get("name", "未知")

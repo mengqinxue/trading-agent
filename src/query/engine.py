@@ -153,7 +153,7 @@ class QueryEngine:
     def _get_sector(self, code: str) -> str:
         """获取股票所属板块"""
         try:
-            from src.data_sources import get_stock_belong_sectors
+            from src.data import get_stock_belong_sectors
             sectors = get_stock_belong_sectors(code)
             if sectors:
                 return sectors[0].get('name', '')
@@ -196,7 +196,7 @@ class QueryEngine:
     def query_sector(self, sector_name: str, sort_by: str = '涨跌幅', n: int = 50) -> Dict[str, Any]:
         """查询板块成分股"""
         try:
-            from src.data_sources import get_sector_stocks
+            from src.data import get_sector_stocks
             codes = get_sector_stocks(sector_name)
 
             if not codes:
@@ -228,7 +228,7 @@ class QueryEngine:
     def get_sector_rankings(self, n: int = 10) -> Dict[str, Any]:
         """获取板块涨跌榜"""
         try:
-            from src.data_sources import get_sector_rankings
+            from src.data import get_sector_rankings
             top, bottom = get_sector_rankings(n)
 
             return {

@@ -91,7 +91,7 @@ class InitAgent(BaseAgent):
         """获取股票名称"""
         # 使用 DataAdapter 获取（多数据源支持）
         try:
-            from src.data_sources.data_adapter import get_adapter
+            from src.data.data_adapter import get_adapter
             adapter = get_adapter()
             name = adapter.batch_get_stock_names([stock_code]).get(stock_code)
             return name or stock_code

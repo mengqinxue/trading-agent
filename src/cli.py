@@ -378,7 +378,7 @@ def cli_web(args):
 
 def cli_update_data(args):
     """更新股票数据"""
-    from src.data_sources.update_stock_daily import update_all_stocks, update_specific_stocks
+    from src.data.update_stock_daily import update_all_stocks, update_specific_stocks
 
     if args.all:
         print("警告：更新所有股票数据将需要较长时间（约 5500 个股票）")
@@ -398,7 +398,7 @@ def cli_update_data(args):
 
 def cli_trend(args):
     """显示市场趋势分析"""
-    from src.data_sources.index_daily import get_market_overview, analyze_market_trend
+    from src.data.index_daily import get_market_overview, analyze_market_trend
 
     if args.code:
         # 分析单个指数
@@ -478,7 +478,7 @@ def cli_trend(args):
 
 def cli_update_index(args):
     """更新指数日线数据"""
-    from src.data_sources.index_daily import update_all_index_daily, get_index_daily_akshare, save_index_daily
+    from src.data.index_daily import update_all_index_daily, get_index_daily_akshare, save_index_daily
 
     full_history = not args.recent  # 默认获取全部历史，除非指定 --recent
 

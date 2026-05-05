@@ -18,7 +18,7 @@ from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
 
 # 多数据源管理器
-from src.data_sources.providers import DataFetcherManager
+from src.data.providers import DataFetcherManager
 
 console = Console()
 

@@ -15,14 +15,14 @@ class TestDataFetcher:
 
     def test_fetcher_initialization(self):
         """测试 Fetcher 初始化"""
-        from src.data_sources import get_fetcher
+        from src.data import get_fetcher
 
         fetcher = get_fetcher()
         assert fetcher is not None
 
     def test_fetcher_is_singleton(self):
         """测试 Fetcher 单例"""
-        from src.data_sources import get_fetcher, reset_fetcher
+        from src.data import get_fetcher, reset_fetcher
 
         reset_fetcher()
         f1 = get_fetcher()
@@ -36,13 +36,13 @@ class TestDailyData:
 
     def test_daily_data_module_exists(self):
         """测试日线数据模块存在"""
-        from src.data_sources import trade_daily
+        from src.data import trade_daily
 
         assert trade_daily is not None
 
     def test_daily_data_columns(self):
         """测试日线数据列名"""
-        from src.data_sources.trade_daily import STANDARD_COLUMNS
+        from src.data.trade_daily import STANDARD_COLUMNS
 
         expected = ["date", "open", "close", "high", "low", "volume", "amount"]
         for col in expected:
@@ -54,13 +54,13 @@ class TestSourcesPriority:
 
     def test_sources_priority_defined(self):
         """测试数据源优先级定义"""
-        from src.data_sources.sources import DAILY_SOURCE_PRIORITY
+        from src.data.sources import DAILY_SOURCE_PRIORITY
 
         assert len(DAILY_SOURCE_PRIORITY) > 0
 
     def test_sources_order(self):
         """测试数据源顺序"""
-        from src.data_sources.sources import DAILY_SOURCE_PRIORITY
+        from src.data.sources import DAILY_SOURCE_PRIORITY
 
         # Akshare 应在前两位
         sources = [s[0] for s in DAILY_SOURCE_PRIORITY]
@@ -72,14 +72,14 @@ class TestTypes:
 
     def test_data_source_enum(self):
         """测试数据源枚举"""
-        from src.data_sources.types import DataSource
+        from src.data.types import DataSource
 
         assert DataSource.AKSHARE == "akshare"
         assert DataSource.EFINANCE == "efinance"
 
     def test_daily_bar_class(self):
         """测试 DailyBar 类"""
-        from src.data_sources.types import DailyBar
+        from src.data.types import DailyBar
 
         bar = DailyBar(
             date="2024-01-01",
@@ -120,13 +120,13 @@ class TestCircuitBreaker:
 
     def test_circuit_breaker_exists(self):
         """测试熔断器类存在"""
-        from src.data_sources.sources import CircuitBreaker
+        from src.data.sources import CircuitBreaker
 
         assert CircuitBreaker is not None
 
     def test_circuit_breaker_initial_state(self):
         """测试熔断器初始状态"""
-        from src.data_sources.sources import CircuitBreaker
+        from src.data.sources import CircuitBreaker
 
         breaker = CircuitBreaker("test_source", threshold=3, cooldown=60)
         assert breaker.failures == 0

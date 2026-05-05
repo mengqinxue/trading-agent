@@ -1,6 +1,13 @@
-"""数据源模块"""
+# -*- coding: utf-8 -*-
+"""数据模块 - 统一的数据获取和管理接口"""
 
-# === 新模块（推荐使用）===
+# === 本地数据管理（原 src/data）===
+from src.data.core import DatabaseManager
+from src.data.loaders import DailyLoader, IndexLoader
+from src.data.fetchers import MarketFetcher, FinancialFetcher, NewsFetcher, AnnouncementFetcher
+from src.data.collectors import StockInfoCollector
+
+# === 数据获取层（原 src/data_sources）===
 from .fetcher import DataFetcher, get_fetcher, reset_fetcher
 from .types import (
     RealtimeQuote, ChipDistribution, DailyBar,
@@ -28,32 +35,41 @@ from .market_sector import (
 from .fundamental_financial import get_financial_data, get_financial_history, get_financial_summary
 from .fundamental_research import get_research_reports, get_research_summary, get_rating_score
 
-# === 旧模块（兼容保留）===
+# === 兼容模块 ===
 from .akshare_data import AkshareDataSource
 from .trendradar import TrendRadarMCPClient
 from .data_adapter import DataAdapter, get_adapter
 
-# === providers（内部实现，后续删除）===
+# === providers（内部实现）===
 from .providers import DataFetcherManager
 
 __all__ = [
-    # 新模块 - 主类
+    # 本地数据管理
+    "DatabaseManager",
+    "DailyLoader",
+    "IndexLoader",
+    "MarketFetcher",
+    "FinancialFetcher",
+    "NewsFetcher",
+    "AnnouncementFetcher",
+    "StockInfoCollector",
+    # 数据获取 - 主类
     "DataFetcher",
     "get_fetcher",
     "reset_fetcher",
-    # 新模块 - 类型
+    # 数据获取 - 类型
     "RealtimeQuote",
     "ChipDistribution",
     "DailyBar",
     "DragonTigerRecord",
     "ResearchReport",
     "DataSource",
-    # 新模块 - 熔断器
+    # 数据获取 - 熔断器
     "CircuitBreaker",
     "get_realtime_breaker",
     "get_daily_breaker",
     "get_chip_breaker",
-    # 新模块 - 数据获取函数
+    # 数据获取 - 函数
     "get_daily",
     "get_daily_as_bars",
     "get_realtime",
@@ -81,7 +97,7 @@ __all__ = [
     "get_research_reports",
     "get_research_summary",
     "get_rating_score",
-    # 旧模块（兼容）
+    # 兼容模块
     "AkshareDataSource",
     "TrendRadarMCPClient",
     "DataAdapter",

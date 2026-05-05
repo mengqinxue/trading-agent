@@ -58,7 +58,7 @@ class BacktestRunner:
             是否成功加载
         """
         # 加载上证指数
-        from src.data_sources import load_index_daily
+        from src.data import load_index_daily
 
         logger.info("[数据加载] 加载上证指数...")
         self.index_df = load_index_daily("000001")

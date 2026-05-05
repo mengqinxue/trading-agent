@@ -11,7 +11,7 @@ from src.agents.market.industry_analyzer import IndustryAnalyzer
 from src.agents.market.stock_screener import StockScreener
 from src.core.llm import get_llm
 from src.core.logger import logger
-from src.data_sources import load_index_daily, get_hot_sectors
+from src.data import load_index_daily, get_hot_sectors
 from src.scheduler.workspace_manager import write_log
 
 # 策略模块
