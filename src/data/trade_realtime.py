@@ -64,37 +64,6 @@ def _get_all_realtime_akshare() -> Optional[pd.DataFrame]:
         return None
 
 
-def _get_all_realtime_efinance() -> Optional[pd.DataFrame]:
-    """使用 Efinance 获取全市场实时行情"""
-    global _realtime_cache
-
-    current_time = time.time()
-    if _realtime_cache['data'] is not None:
-        elapsed = current_time - _realtime_cache['timestamp']
-        if elapsed < _realtime_cache['ttl']:
-            return _realtime_cache['data']
-
-    try:
-        import efinance as ef
-
-        random_sleep()
-
-        df = ef.stock.get_quote_history_realtime()
-
-        if df is None or df.empty:
-            return None
-
-        _realtime_cache['data'] = df
-        _realtime_cache['timestamp'] = current_time
-        logger.info(f"[实时行情] Efinance 获取成功: rows={len(df)}")
-
-        return df
-
-    except Exception as e:
-        logger.warning(f"[实时行情] Efinance 获取失败: {e}")
-        return None
-
-
 # ============================================
 # 单只股票实时行情
 # ============================================
@@ -169,11 +138,18 @@ def get_realtime(code: str) -> Optional[RealtimeQuote]:
         try:
             logger.info(f"[实时行情] 尝试 {source} 获取 {code}...")
 
-            # 先获取全量数据（利用缓存）
-            if source == "efinance":
-                df = _get_all_realtime_efinance()
-            elif source == "akshare":
+            if source == "akshare":
                 df = _get_all_realtime_akshare()
+            elif source == "pytdx":
+                # Pytdx 通过 DataFetcherManager 处理
+                from .providers import DataFetcherManager
+                manager = DataFetcherManager()
+                quote = manager.get_realtime_quote(code)
+                if quote:
+                    breaker.record_success(source)
+                    logger.info(f"[实时行情] {code} 使用 {source} 获取成功")
+                    return quote
+                continue
             else:
                 continue
 

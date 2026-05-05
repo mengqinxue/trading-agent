@@ -53,30 +53,6 @@ def _get_indices_akshare() -> Optional[pd.DataFrame]:
 
 
 # ============================================
-# Efinance 指数获取
-# ============================================
-
-def _get_indices_efinance() -> Optional[pd.DataFrame]:
-    """使用 Efinance 获取指数行情"""
-    try:
-        import efinance as ef
-
-        random_sleep()
-
-        # 获取指数行情
-        df = ef.stock.get_quote_history_realtime()
-
-        if df is None or df.empty:
-            return None
-
-        return df
-
-    except Exception as e:
-        logger.warning(f"[指数Efinance] 获取失败: {e}")
-        return None
-
-
-# ============================================
 # 统一接口
 # ============================================
 
@@ -87,44 +63,38 @@ def get_main_indices() -> List[Dict[str, Any]]:
     Returns:
         指数列表，每个指数包含：code, name, price, change_pct
     """
-    for source in ['akshare', 'efinance']:
-        try:
-            logger.info(f"[指数] 尝试 {source} 获取...")
+    try:
+        logger.info(f"[指数] 尝试 akshare 获取...")
+        df = _get_indices_akshare()
 
-            if source == 'akshare':
-                df = _get_indices_akshare()
-            elif source == 'efinance':
-                df = _get_indices_efinance()
-            else:
+        if df is None or df.empty:
+            logger.warning("[指数] akshare 获取失败")
+            return []
+
+        indices = []
+        for code, name in MAIN_INDEXES.items():
+            row = df[df['代码'] == code]
+            if row.empty:
                 continue
 
-            if df is None or df.empty:
-                continue
+            r = row.iloc[0]
+            index_data = {
+                'code': code,
+                'name': name,
+                'price': safe_float(r.get('最新价', 0)),
+                'change_pct': safe_float(r.get('涨跌幅', 0)),
+                'change_amount': safe_float(r.get('涨跌额', 0)),
+                'volume': safe_float(r.get('成交量', 0)),
+                'amount': safe_float(r.get('成交额', 0)),
+            }
+            indices.append(index_data)
 
-            indices = []
-            for code, name in MAIN_INDEXES.items():
-                row = df[df['代码'] == code]
-                if row.empty:
-                    continue
+        if indices:
+            logger.info(f"[指数] 使用 akshare 获取成功: {len(indices)} 个指数")
+            return indices
 
-                r = row.iloc[0]
-                index_data = {
-                    'code': code,
-                    'name': name,
-                    'price': safe_float(r.get('最新价', 0)),
-                    'change_pct': safe_float(r.get('涨跌幅', 0)),
-                    'change_amount': safe_float(r.get('涨跌额', 0)),
-                    'volume': safe_float(r.get('成交量', 0)),
-                    'amount': safe_float(r.get('成交额', 0)),
-                }
-                indices.append(index_data)
-
-            if indices:
-                logger.info(f"[指数] 使用 {source} 获取成功: {len(indices)} 个指数")
-                return indices
-
-        except Exception as e:
-            logger.warning(f"[指数] {source} 失败: {e}")
+    except Exception as e:
+        logger.warning(f"[指数] akshare 失败: {e}")
 
     logger.warning("[指数] 所有数据源失败")
     return []

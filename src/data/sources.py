@@ -132,23 +132,22 @@ class CircuitBreaker:
 
 # 日线数据源优先级（数字越小越优先）
 DAILY_SOURCE_PRIORITY = [
-    ("efinance", 0),    # 东财爬虫
-    ("akshare", 1),     # Akshare
-    ("baostock", 2),    # Baostock（免费稳定）
-    ("tushare", 3),     # Tushare（需token）
-    ("pytdx", 4),       # 通达信直连
+    ("tushare", 0),     # Tushare（需token，2000积分可获取全量数据）
+    ("akshare", 1),     # Akshare（免费、无限制）
+    ("pytdx", 2),       # 通达信直连
+    ("baostock", 3),    # Baostock（免费稳定）
 ]
 
 # 实时行情数据源优先级
 REALTIME_SOURCE_PRIORITY = [
-    ("efinance", 0),
-    ("akshare", 1),
+    ("akshare", 0),
+    ("pytdx", 1),
 ]
 
 # 筹码分布数据源优先级
 CHIP_SOURCE_PRIORITY = [
-    ("efinance", 0),
-    ("akshare", 1),
+    ("tushare", 0),     # Tushare（需token）
+    ("akshare", 1),     # Akshare（待实现）
 ]
 
 

@@ -65,49 +65,6 @@ def _get_sector_rankings_akshare(n: int = 10) -> Tuple[List[Dict], List[Dict]]:
 
 
 # ============================================
-# Efinance 板块获取
-# ============================================
-
-def _get_sector_rankings_efinance(n: int = 10) -> Tuple[List[Dict], List[Dict]]:
-    """使用 Efinance 获取板块涨跌榜"""
-    try:
-        import efinance as ef
-
-        random_sleep()
-
-        # 获取板块数据
-        df = ef.stock.get_board_concept()
-
-        if df is None or df.empty:
-            return [], []
-
-        df = df.sort_values('涨跌幅', ascending=False)
-
-        top_list = []
-        bottom_list = []
-
-        for _, row in df.head(n).iterrows():
-            top_list.append({
-                'name': str(row.get('板块名称', '')),
-                'type': 'concept',
-                'change': safe_float(row.get('涨跌幅', 0)),
-            })
-
-        for _, row in df.tail(n).iterrows():
-            bottom_list.append({
-                'name': str(row.get('板块名称', '')),
-                'type': 'concept',
-                'change': safe_float(row.get('涨跌幅', 0)),
-            })
-
-        return top_list, bottom_list
-
-    except Exception as e:
-        logger.warning(f"[板块Efinance] 获取失败: {e}")
-        return [], []
-
-
-# ============================================
 # 统一接口
 # ============================================
 
@@ -121,23 +78,14 @@ def get_sector_rankings(n: int = 10) -> Tuple[List[Dict], List[Dict]]:
     Returns:
         (涨幅榜, 跌幅榜)
     """
-    for source in ['akshare', 'efinance']:
-        try:
-            logger.info(f"[板块] 尝试 {source} 获取涨跌榜...")
-
-            if source == 'akshare':
-                top, bottom = _get_sector_rankings_akshare(n)
-            elif source == 'efinance':
-                top, bottom = _get_sector_rankings_efinance(n)
-            else:
-                continue
-
-            if top or bottom:
-                logger.info(f"[板块] 使用 {source} 获取成功: 涨幅榜{len(top)}个, 跌幅榜{len(bottom)}个")
-                return top, bottom
-
-        except Exception as e:
-            logger.warning(f"[板块] {source} 失败: {e}")
+    try:
+        logger.info(f"[板块] 尝试 akshare 获取涨跌榜...")
+        top, bottom = _get_sector_rankings_akshare(n)
+        if top or bottom:
+            logger.info(f"[板块] 使用 akshare 获取成功: 涨幅榜{len(top)}个, 跌幅榜{len(bottom)}个")
+            return top, bottom
+    except Exception as e:
+        logger.warning(f"[板块] akshare 失败: {e}")
 
     logger.warning("[板块] 所有数据源失败")
     return [], []

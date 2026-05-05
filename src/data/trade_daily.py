@@ -74,51 +74,6 @@ def _get_daily_akshare(code: str, days: int) -> Optional[pd.DataFrame]:
 
 
 # ============================================
-# Efinance 日线获取
-# ============================================
-
-def _get_daily_efinance(code: str, days: int) -> Optional[pd.DataFrame]:
-    """使用 Efinance 获取日线数据"""
-    try:
-        import efinance as ef
-
-        random_sleep()
-
-        # 获取数据
-        df = ef.stock.get_quote_history(
-            code,
-            start_date=(datetime.now() - timedelta(days=days * 2)).strftime('%Y%m%d'),
-            end_date=datetime.now().strftime('%Y%m%d'),
-            klt=101,  # 日线
-            fqt=1     # 前复权
-        )
-
-        if df is None or df.empty:
-            return None
-
-        # 标准化列名
-        df = df.rename(columns={
-            '日期': 'date',
-            '开盘': 'open',
-            '收盘': 'close',
-            '最高': 'high',
-            '最低': 'low',
-            '成交量': 'volume',
-            '成交额': 'amount',
-            '涨跌幅': 'pct_chg'
-        })
-
-        df['date'] = pd.to_datetime(df['date']).dt.strftime('%Y-%m-%d')
-        df = df.sort_values('date').tail(days)
-
-        return df
-
-    except Exception as e:
-        logger.warning(f"[Efinance] {code} 日线获取失败: {e}")
-        return None
-
-
-# ============================================
 # Baostock 日线获取（兜底）
 # ============================================
 
@@ -231,10 +186,24 @@ def get_daily(
         try:
             logger.info(f"[日线] 尝试 {source} 获取 {code}...")
 
-            if source == "efinance":
-                df = _get_daily_efinance(code, days)
+            if source == "tushare":
+                # Tushare 通过 DataFetcherManager 处理
+                from .providers import DataFetcherManager
+                manager = DataFetcherManager()
+                df = manager.get_daily_data(code, days=days)
+                source = manager._fetchers[0].name if manager._fetchers else "tushare"
             elif source == "akshare":
                 df = _get_daily_akshare(code, days)
+            elif source == "pytdx":
+                # Pytdx 通过 DataFetcherManager 处理
+                from .providers import DataFetcherManager, PytdxFetcher
+                manager = DataFetcherManager()
+                for f in manager._fetchers:
+                    if f.name == "PytdxFetcher":
+                        df = f.get_daily_data(code, days=days)
+                        break
+                else:
+                    continue
             elif source == "baostock":
                 df = _get_daily_baostock(code, days)
             else:

@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
 ===================================
-TushareFetcher - 备用数据源 1 (Priority 2)
+TushareFetcher - 主数据源 (Priority -1 with Token)
 ===================================
 
 数据来源：Tushare Pro API（挖地兔）
 特点：需要 Token、有请求配额限制
-优点：数据质量高、接口稳定
+优点：数据质量高、接口稳定、2000积分可获取全量数据
 
 流控策略：
 1. 实现"每分钟调用计数器"
@@ -130,18 +130,21 @@ class _TushareHttpClient:
 class TushareFetcher(BaseFetcher):
     """
     Tushare Pro 数据源实现
-    
-    优先级：2
+
+    优先级：动态调整
+    - Token 配置且 API 初始化成功：优先级 -1（最高优先级）
+    - Token 未配置：不可用
+
     数据来源：Tushare Pro API
-    
+
     关键策略：
     - 每分钟调用计数器，防止超出配额
     - 超过 80 次/分钟时强制等待
     - 失败后指数退避重试
-    
-    配额说明（Tushare 免费用户）：
+
+    配额说明（Tushare 用户）：
+    - 2000积分用户：可获取全量数据，包括实时行情、筹码分布等
     - 每分钟最多 80 次请求
-    - 每天最多 500 次请求
     """
     
     name = "TushareFetcher"

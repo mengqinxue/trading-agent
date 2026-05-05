@@ -9,46 +9,27 @@ import logging
 from typing import Optional
 
 from .types import ChipDistribution, safe_float
-from .sources import get_chip_breaker, random_sleep
+from .sources import get_chip_breaker, random_sleep, CHIP_SOURCE_PRIORITY
 
 logger = logging.getLogger(__name__)
 
 
 # ============================================
-# Efinance 筹码分布获取
+# Tushare 筹码分布获取
 # ============================================
 
-def _get_chip_efinance(code: str) -> Optional[ChipDistribution]:
-    """使用 Efinance 获取筹码分布"""
+def _get_chip_tushare(code: str) -> Optional[ChipDistribution]:
+    """使用 Tushare 获取筹码分布"""
     try:
-        import efinance as ef
-
-        random_sleep(2.0, 4.0)  # 筹码接口更慢，多等待
-
-        # 获取筹码分布数据
-        df = ef.stock.get_chip_distribution(code)
-
-        if df is None or df.empty:
-            return None
-
-        # 解析数据
-        row = df.iloc[-1]  # 最新数据
-
-        chip = ChipDistribution(
-            code=code,
-            date=str(row.get('日期', '')),
-            source='efinance',
-            profit_ratio=safe_float(row.get('获利比例', 0)),
-            avg_cost=safe_float(row.get('平均成本', 0)),
-            cost_90_low=safe_float(row.get('90%成本下限', 0)),
-            cost_90_high=safe_float(row.get('90%成本上限', 0)),
-            concentration_90=safe_float(row.get('90%集中度', 0)),
-        )
-
+        from .providers import DataFetcherManager
+        manager = DataFetcherManager()
+        chip = manager.get_chip_distribution(code)
+        if chip:
+            breaker = get_chip_breaker()
+            breaker.record_success("tushare")
         return chip
-
     except Exception as e:
-        logger.warning(f"[Efinance筹码] {code} 获取失败: {e}")
+        logger.warning(f"[Tushare筹码] {code} 获取失败: {e}")
         return None
 
 
@@ -64,7 +45,6 @@ def _get_chip_akshare(code: str) -> Optional[ChipDistribution]:
         random_sleep(2.0, 4.0)
 
         # Akshare 暂无直接筹码分布接口
-        # 可通过 stock_em_hsgt_north_net_flow_in 等间接获取
         logger.warning(f"[Akshare筹码] {code} 暂无筹码分布接口")
         return None
 
@@ -89,8 +69,8 @@ def get_chip_distribution(code: str) -> Optional[ChipDistribution]:
     """
     breaker = get_chip_breaker()
 
-    # Efinance 为首选
-    for source in ['efinance', 'akshare']:
+    # 按优先级尝试各数据源
+    for source, priority in CHIP_SOURCE_PRIORITY:
         if not breaker.is_available(source):
             logger.debug(f"[筹码] {source} 熔断中，跳过")
             continue
@@ -98,9 +78,9 @@ def get_chip_distribution(code: str) -> Optional[ChipDistribution]:
         try:
             logger.info(f"[筹码] 尝试 {source} 获取 {code}...")
 
-            if source == 'efinance':
-                chip = _get_chip_efinance(code)
-            elif source == 'akshare':
+            if source == "tushare":
+                chip = _get_chip_tushare(code)
+            elif source == "akshare":
                 chip = _get_chip_akshare(code)
             else:
                 continue

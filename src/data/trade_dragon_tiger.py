@@ -73,45 +73,6 @@ def _get_dragon_tiger_akshare(code: str, days: int = 30) -> List[DragonTigerReco
 
 
 # ============================================
-# Efinance 龙虎榜获取
-# ============================================
-
-def _get_dragon_tiger_efinance(code: str, days: int = 30) -> List[DragonTigerRecord]:
-    """使用 Efinance 获取龙虎榜"""
-    try:
-        import efinance as ef
-
-        random_sleep()
-
-        # Efinance 龙虎榜接口
-        df = ef.stock.get_lhb_detail(code)
-
-        if df is None or df.empty:
-            return []
-
-        records = []
-        for _, row in df.iterrows():
-            record = DragonTigerRecord(
-                code=code,
-                name=str(row.get('名称', '')),
-                date=str(row.get('日期', '')),
-                buy_amount=safe_float(row.get('买入额', 0)),
-                sell_amount=safe_float(row.get('卖出额', 0)),
-                net_buy=safe_float(row.get('净买入', 0)),
-            )
-            records.append(record)
-
-        # 按日期排序，取最近 days 天
-        records = sorted(records, key=lambda r: r.date, reverse=True)[:days]
-
-        return records
-
-    except Exception as e:
-        logger.warning(f"[龙虎榜Efinance] {code} 获取失败: {e}")
-        return []
-
-
-# ============================================
 # 统一接口
 # ============================================
 
@@ -127,23 +88,14 @@ def get_dragon_tiger(code: str, days: int = 30) -> List[DragonTigerRecord]:
         龙虎榜记录列表
     """
     # Akshare 为首选
-    for source in ['akshare', 'efinance']:
-        try:
-            logger.info(f"[龙虎榜] 尝试 {source} 获取 {code}...")
-
-            if source == 'akshare':
-                records = _get_dragon_tiger_akshare(code, days)
-            elif source == 'efinance':
-                records = _get_dragon_tiger_efinance(code, days)
-            else:
-                continue
-
-            if records:
-                logger.info(f"[龙虎榜] {code} 使用 {source} 获取成功: {len(records)} 条")
-                return records
-
-        except Exception as e:
-            logger.warning(f"[龙虎榜] {source} 失败: {e}")
+    try:
+        logger.info(f"[龙虎榜] 尝试 akshare 获取 {code}...")
+        records = _get_dragon_tiger_akshare(code, days)
+        if records:
+            logger.info(f"[龙虎榜] {code} 使用 akshare 获取成功: {len(records)} 条")
+            return records
+    except Exception as e:
+        logger.warning(f"[龙虎榜] akshare 失败: {e}")
 
     logger.warning(f"[龙虎榜] {code} 所有数据源失败")
     return []

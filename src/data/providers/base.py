@@ -897,32 +897,18 @@ class DataFetcherManager:
         初始化默认数据源列表
 
         优先级动态调整逻辑：
-        - 如果配置了 TUSHARE_TOKEN：Tushare 优先级提升为 0（最高）
+        - 如果配置了 TUSHARE_TOKEN：Tushare 优先级提升为 -1（最高）
         - 否则按默认优先级：
-          0. EfinanceFetcher (Priority 0) - 最高优先级
-          1. AkshareFetcher (Priority 1)
+          1. AkshareFetcher (Priority 1) - 免费、无限制
           2. PytdxFetcher (Priority 2) - 通达信
-          2. TushareFetcher (Priority 2)
-          3. BaostockFetcher (Priority 3)
-          4. YfinanceFetcher (Priority 4)
-          5. LongbridgeFetcher (Priority 5) - 长桥（美股/港股兜底）
+          3. TushareFetcher (Priority 2) - 需要 Token
+          4. BaostockFetcher (Priority 3)
+          5. YfinanceFetcher (Priority 4) - 美股/港股
+          6. LongbridgeFetcher (Priority 5) - 长桥（美股/港股兜底）
 
         注意：只添加成功初始化的数据源（库已安装且配置正确）
         """
         fetchers_to_add: List[BaseFetcher] = []
-
-        # 尝试初始化 EfinanceFetcher
-        try:
-            from .efinance_fetcher import EfinanceFetcher
-            efinance = EfinanceFetcher()
-            if efinance._is_available():
-                fetchers_to_add.append(efinance)
-            else:
-                logger.debug("[数据源初始化] EfinanceFetcher 不可用（库未安装）")
-        except ImportError as e:
-            logger.debug(f"[数据源初始化] EfinanceFetcher 导入失败: {e}")
-        except Exception as e:
-            logger.warning(f"[数据源初始化] EfinanceFetcher 初始化失败: {e}")
 
         # AkshareFetcher 是核心数据源，必须可用
         from .akshare_fetcher import AkshareFetcher
